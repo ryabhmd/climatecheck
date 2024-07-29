@@ -3,6 +3,12 @@ import requests
 import json
 import time
 
+"""
+Code to retrieve tweet texts for the GerCCT data using Twitter API.
+Bearer token needs to be replaced. 
+Some functions are taken from: https://github.com/xdevplatform/Twitter-API-v2-sample-code/blob/main/Tweet-Lookup/get_tweets_with_bearer_token.py
+"""
+
 bearer_token = os.environ.get("BEARER_TOKEN")
 
 def create_url(ids):
