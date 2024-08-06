@@ -86,7 +86,7 @@ def extract_references(html):
 
 def scrape_all_articles(base_url):
     all_articles = []
-    for page in range(16, 36):  # Assuming there are 35 pages
+    for page in range(1, 36):  # Currently there are 35 pages
         print(f'Scraping page {page}')
         url = f'{base_url}&_pagination={page}'
         html = get_html(url)
