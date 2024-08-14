@@ -1,6 +1,8 @@
 import pyalex
 from pyalex import Works, Topics
 from pyalex import config
+
+import pandas as pd
 import json
 
 EMAIL = "raia.abu_ahmad@dfki.de"
