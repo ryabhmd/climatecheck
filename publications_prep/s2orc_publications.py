@@ -42,6 +42,7 @@ def main():
     while offset <= total_responses:
         query_params['offset'] = offset
         response = requests.get(url, params=query_params, headers=headers)
+
         ids.extend([publication['paperId'] for publication in response.json()['data']])
         dois.extend([publication['externalIds']['DOI'] for publication in response.json()['data']])
         titles.extend([publication['title'] for publication in response.json()['data']])
@@ -55,6 +56,7 @@ def main():
         print(f"Saved response of offset {offset}")
             
         offset += 10
+        time.sleep(5)
 
 
     s2orc_publications = pd.DataFrame({
