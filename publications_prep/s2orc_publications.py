@@ -3,6 +3,8 @@ import argparse
 import time
 import pandas as pd
 import json
+import pickle
+
 
 def main():
 
@@ -75,6 +77,10 @@ def main():
         })
         
     s2orc_publications.to_csv('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/s2orc_publications.csv')
+
+    with open('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/s2orc_errors.pkl', 'wb') as f:
+        pickle.dump(errors, f)
+
 
 
 if __name__ == "__main__":
