@@ -47,7 +47,7 @@ def main():
     keywords = []
     concepts = []
     
-    for idx, page in enumerate(pager_works):
+    for idx, page in enumerate(pager_works, start=26193):
         relevant_works = []
         for work in page:
             relevant_works.append(work)
