@@ -4,6 +4,7 @@ from pyalex import config
 
 import pandas as pd
 import json
+import time
 
 EMAIL = "raia.abu_ahmad@dfki.de"
 
@@ -47,7 +48,7 @@ def main():
     keywords = []
     concepts = []
     
-    for idx, page in enumerate(pager_works, start=26193):
+    for idx, page in enumerate(pager_works, start=28434):
         relevant_works = []
         for work in page:
             relevant_works.append(work)
@@ -62,6 +63,7 @@ def main():
         with open(f'/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/OpenAlex/OpenAlex_ClimateCheck_{idx}.json', 'w') as f:
             json.dump(relevant_works, f)
             print(f'Saved page {idx}')
+        time.sleep(5)
 
     openalex_publications = pd.DataFrame({
         'id': ids, 
