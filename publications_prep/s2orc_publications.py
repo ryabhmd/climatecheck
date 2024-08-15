@@ -39,24 +39,30 @@ def main():
         json.dump(response.json(), f)
 
     offset = 10
+    errors = []
+
     while offset <= total_responses:
         query_params['offset'] = offset
-        response = requests.get(url, params=query_params, headers=headers)
+        try:
+            response = requests.get(url, params=query_params, headers=headers)
+            
+            ids.extend([publication['paperId'] for publication in response.json()['data']])
+            dois.extend([publication['externalIds']['DOI'] for publication in response.json()['data']])
+            titles.extend([publication['title'] for publication in response.json()['data']])
+            openAccessPdfs.extend([publication['openAccessPdf'] for publication in response.json()['data']])
+            fieldsOfStudy.extend([publication['fieldsOfStudy'] for publication in response.json()['data']])
+            s2FieldsOfStudy.extend([publication['s2FieldsOfStudy'] for publication in response.json()['data']])
+            
+            # Save response.json() to a json file
+            with open(f"/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/S2ORC/s2orc_{query_params['offset']}.json", 'w') as f:
+                json.dump(response.json(), f)
+            print(f"Saved response of offset {offset}")
 
-        ids.extend([publication['paperId'] for publication in response.json()['data']])
-        dois.extend([publication['externalIds']['DOI'] for publication in response.json()['data']])
-        titles.extend([publication['title'] for publication in response.json()['data']])
-        openAccessPdfs.extend([publication['openAccessPdf'] for publication in response.json()['data']])
-        fieldsOfStudy.extend([publication['fieldsOfStudy'] for publication in response.json()['data']])
-        s2FieldsOfStudy.extend([publication['s2FieldsOfStudy'] for publication in response.json()['data']])
-        
-        # Save response.json() to a json file
-        with open(f"/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/S2ORC/s2orc_{query_params['offset']}.json", 'w') as f:
-            json.dump(response.json(), f)
-        print(f"Saved response of offset {offset}")
+        except:
+            errors.append((offset, response.text))
             
         offset += 10
-        time.sleep(5)
+        time.sleep(10)
 
 
     s2orc_publications = pd.DataFrame({
