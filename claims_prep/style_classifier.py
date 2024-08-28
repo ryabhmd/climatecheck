@@ -6,6 +6,7 @@ import torch
 import numpy as np
 import evaluate
 import wandb
+import os
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 tokenizer = AutoTokenizer.from_pretrained("google-bert/bert-base-uncased")
@@ -30,8 +31,8 @@ def compute_metrics(eval_pred):
 
 def main():
 
-    tweets_df = pd.read_pickle('tweets_df.pkl')
-    non_tweets_df = pd.read_pickle('non_tweets_df.pkl')
+    tweets_df = pd.read_pickle('/netscratch/abu/Shared-Tasks/ClimateCheck/tweets_df.pkl')
+    non_tweets_df = pd.read_pickle('/netscratch/abu/Shared-Tasks/ClimateCheck/non_tweets_df.pkl')
 
     classifier_data = pd.concat([tweets_df, non_tweets_df], ignore_index=True)
 
@@ -43,6 +44,8 @@ def main():
     tokenized_dataset = dataset.map(tokenize_function, batched=True)
 
     tokenized_dataset = tokenized_dataset.train_test_split(test_size=0.2, shuffle=True)
+    print(len(tokenized_dataset['train']))
+    print(len(tokenized_dataset['test']))
 
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
@@ -62,8 +65,7 @@ def main():
     training_args = TrainingArguments(
         output_dir="results",
         report_to="wandb",
-        logging_steps=500,
-        evaluation_strategy="epoch",
+        logging_steps=100,
         per_device_train_batch_size=8,
         per_device_eval_batch_size=8,
         num_train_epochs=3,
@@ -76,6 +78,8 @@ def main():
         eval_dataset=tokenized_dataset['test'],tokenizer=tokenizer
         )
 
+    trainer.train()
+
     trainer.save_model("results/models")
 
     # Evaluate model
@@ -87,11 +91,14 @@ def main():
 
     preds = []
     for pred in predictions.predictions:
-
-        if pred >= 0.5:
+        pred_0 = pred[0]
+        pred_1 = pred[1]
+        if pred_1 >= pred_0:
             preds.append(1)
         else:
             preds.append(0)
+
+
 
     accuracy = accuracy_metric.compute(predictions=preds, references=predictions.label_ids)
     print(f'Accuracy: {accuracy}')
