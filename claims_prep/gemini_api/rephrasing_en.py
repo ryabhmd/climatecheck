@@ -4,7 +4,10 @@ import argparse
 from datasets import load_dataset
 import google.generativeai as genai
 
-
+"""
+Use Gemini API to rephrase the ClimateFEVER, MultiFC, and ClimateFeedback datasets from 
+formal text to tweets. 
+"""
 
 def main():
 
@@ -62,8 +65,8 @@ def main():
         claim_rephrasings.append(f"Gemini Error: {error_type}, {error_message}")
 
       # Free tier limit for Gemini 1.5 Flash is 15 requests per minute and 1.5K requests per day
-      if len(claims) % 15 == 0:
-        time.sleep(60 * 5) # Sleep for 10 minutes every 15 items
+      if (idx+1) % 15 == 0:
+        time.sleep(60)
 
     data = {
         'claim_id': claim_ids,
@@ -89,13 +92,13 @@ def main():
             error_type = type(e).__name__
             error_message = str(e)
             gemini_rephrasings.append(f"Gemini Error: {error_type}, {error_message}")
+
+        if (idx+1) % 15 == 0:
+            time.sleep(60)
     
     multiFC_feedback_claims['rephrasings'] = gemini_rephrasings
     multiFC_feedback_claims.to_csv('multifc_feedback_rephrased.csv')
-    print('Finished rephrasing MultiFC and saved at multifc_rephrased.csv')
-
-
-
+    print('Finished rephrasing MultiFC and saved at multifc_feedback_rephrased.csv')
 
 
 if __name__ == "__main__":
