@@ -1,0 +1,13 @@
+pandas
+transformers
+argparse
+requests
+bs4
+datasets
+evaluate
+torch
+google.generativeai
+praw
+langdetect
+numpy
+pyalex
