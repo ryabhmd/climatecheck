@@ -9,6 +9,17 @@ import wandb
 import os
 import argparse
 
+"""
+Script that trains a binary fine-tuned classifier of tweets vs. non-tweets. 
+The following arguments should be passed: 
+--tweets_path: path to pkl containing a dataframe of tweets (see style_classifier_data scripts)
+--non_tweets_path: path to pkl containing a dataframe of non-tweets (see style_classifier_data scripts)
+--model_name: name of HF model to be used for fine-tuning
+--tokenizer_name: name of HF tokenizer to be used for tokenizing datasets
+
+"""
+
+
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 def tokenize_function(examples, tokenizer):
