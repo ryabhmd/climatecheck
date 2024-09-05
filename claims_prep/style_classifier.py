@@ -5,7 +5,6 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trai
 import torch
 import numpy as np
 import evaluate
-import wandb
 import os
 import argparse
 
