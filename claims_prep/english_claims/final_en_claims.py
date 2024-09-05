@@ -7,7 +7,7 @@ Script that create the final file of English claims from
 2. MultiFC (rephrased)
 3. ClimateFeedback (rephrased)
 4. ClimateFEVER (rephrased)
-4. DEBAGREEMENT
+5. DEBAGREEMENT
 
 Final dataset contains the columns: claimID, claim, source, generation_method, original_claim
 """
