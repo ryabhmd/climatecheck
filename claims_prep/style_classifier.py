@@ -7,13 +7,11 @@ import numpy as np
 import evaluate
 import wandb
 import os
+import argparse
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-tokenizer = AutoTokenizer.from_pretrained("google-bert/bert-base-uncased")
-wandb.init(project="style-classifier", entity="raya-abu-ahmad")
 
-
-def tokenize_function(examples):
+def tokenize_function(examples, tokenizer):
     return tokenizer(examples["text"], padding=True, truncation=True)
 
 def compute_metrics(eval_pred):
@@ -31,8 +29,21 @@ def compute_metrics(eval_pred):
 
 def main():
 
-    tweets_df = pd.read_pickle('/netscratch/abu/Shared-Tasks/ClimateCheck/tweets_df.pkl')
-    non_tweets_df = pd.read_pickle('/netscratch/abu/Shared-Tasks/ClimateCheck/non_tweets_df.pkl')
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--tweets_path", type=str, help="Path for dataset that contains tweets dataframe in pkl format")
+    parser.add_argument("--non_tweets_path", type=str, help="Path for dataset that contains non-tweets dataframe in pkl format")
+    parser.add_argument("--model_name", type=str, help="Name of model to be loaded from HF")
+    parser.add_argument("--tokenizer_name", type=str, help="Name of tokenizer to be loaded from HF")
+
+    args = parser.parse_args()
+
+    tweets_path = args.tweets_path
+    non_tweets_path = args.non_tweets_path
+    model_name = args.model_name
+    tokenizer_name = args.tokenizer_name
+
+    tweets_df = pd.read_pickle(tweets_path)
+    non_tweets_df = pd.read_pickle(non_tweets_path)
 
     classifier_data = pd.concat([tweets_df, non_tweets_df], ignore_index=True)
 
@@ -41,7 +52,9 @@ def main():
 
     dataset = Dataset.from_pandas(classifier_data)
 
-    tokenized_dataset = dataset.map(tokenize_function, batched=True)
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+
+    tokenized_dataset = dataset.map(lambda examples: tokenize_function(examples, tokenizer), batched=True)
 
     tokenized_dataset = tokenized_dataset.train_test_split(test_size=0.2, shuffle=True)
     print(len(tokenized_dataset['train']))
@@ -49,22 +62,12 @@ def main():
 
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
-    model = AutoModelForSequenceClassification.from_pretrained("google-bert/bert-base-uncased", num_labels=2)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
 
     model.to(device)
 
-    # set the wandb project where this run will be logged
-    os.environ["WANDB_PROJECT"] = "pairwise-text-classification"
-
-    # save your trained model checkpoint to wandb
-    os.environ["WANDB_LOG_MODEL"] = "true"
-
-    # turn off watch to log faster
-    os.environ["WANDB_WATCH"] = "false"
-
     training_args = TrainingArguments(
         output_dir="results",
-        report_to="wandb",
         logging_steps=100,
         per_device_train_batch_size=8,
         per_device_eval_batch_size=8,
@@ -75,7 +78,8 @@ def main():
         model=model,
         args=training_args,
         train_dataset=tokenized_dataset['train'],
-        eval_dataset=tokenized_dataset['test'],tokenizer=tokenizer
+        eval_dataset=tokenized_dataset['test'],
+        tokenizer=tokenizer
         )
 
     trainer.train()
@@ -98,8 +102,6 @@ def main():
         else:
             preds.append(0)
 
-
-
     accuracy = accuracy_metric.compute(predictions=preds, references=predictions.label_ids)
     print(f'Accuracy: {accuracy}')
     precision = precision_metric.compute(predictions=preds, references=predictions.label_ids)
@@ -108,23 +110,6 @@ def main():
     print(f'Recall: {recall}')
     f1 = f1_metric.compute(predictions=preds, references=predictions.label_ids)
     print(f'F1: {f1}')
-
-
-
-
-
-
-
-
-
-    
-
-
-
-
-
-
-
 
 
 if __name__ == "__main__":
