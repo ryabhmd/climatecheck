@@ -65,6 +65,54 @@ def main():
     data[0].to_pickle('final_english_claims_atomic.pkl')
     data[1].to_pickle('final_german_claims_atomic.pkl')
 
+    # Create new files where each atomic claim has its own row
+    atomic_claims_data = []
+
+    for item in data:
+        claims = []
+        claimIDs = []
+        sources = []
+        gen_methods = []
+        original_claims = []
+        full_claim_texts = []
+        full_claim_texts_IDs = []
+        
+        for idx, row in english_claims.iterrows():
+            # Check if the row has a list of atomic claims that was created
+            if type(row['atomic_claims']) == list:
+                # If so, iterate over the atomic claims and add their data to lists
+                for i, claim in enumerate(row['atomic_claims']):
+                    claims.append(claim)
+                    claimIDs.append(row['claimID']+f"_{i}") # original claim ID + the index of the atomic claim in the list
+                    sources.append(row['source'])
+                    gen_methods.append(row['generation_method'])
+                    original_claims.append(row['original_claim'])
+                    full_claim_texts.append(row['claim'])
+                    full_claim_texts_IDs.append(row['claimID'])
+            else:
+                # If not, add the original claim data to lists
+                claims.append(row['claim'])
+                claimIDs.append(row['claimID'])
+                sources.append(row['source'])
+                gen_methods.append(row['generation_method'])
+                original_claims.append(row['original_claim'])
+                full_claim_texts.append(None)
+                full_claim_texts_IDs.append(None)
+            
+        # create pandas dataframe from lists
+        atomic_claims_df = pd.DataFrame(columns=['claimID', 'claim', 'source', 'generation_method', 'original_claim', 'full_claim_text', 'full_claim_text_ID'])
+        atomic_claims_df['claim'] = claims
+        atomic_claims_df['claimID'] = claimIDs
+        atomic_claims_df['source'] = sources
+        atomic_claims_df['generation_method'] = gen_methods
+        atomic_claims_df['original_claim'] = original_claims
+        atomic_claims_df['full_claim_text'] = full_claim_texts
+        atomic_claims_df['full_claim_text_ID'] = full_claim_texts_IDs
+
+        atomic_claims_data.append(atomic_claims_df)
+    
+    atomic_claims_data[0].to_pickle('climatecheck_english_claims.pkl')
+    atomic_claims_data[1].to_pickle('climatecheck_german_claims.pkl')
 
 if __name__ == "__main__":
     main()
