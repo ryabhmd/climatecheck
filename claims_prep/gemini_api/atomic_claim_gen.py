@@ -1,6 +1,7 @@
 import re
 import ast
 import argparse
+from claims_prep.german_claims.klimawandel_reddit_data import translate_keywords_to_german
 
 """
 Script to go over both enlish claims and german claims and extract a list of atomic claims 
@@ -110,6 +111,19 @@ def main():
         atomic_claims_df['full_claim_text_ID'] = full_claim_texts_IDs
 
         atomic_claims_data.append(atomic_claims_df)
+
+    # Filter German claims further
+    german_keywords = translate_keywords_to_german()
+
+    for idx, row in atomic_claims_data[1].iterrows():
+        claim = row['claim']
+        if row['source'] == 'Klimawandel-Subreddit':
+            if not any(keyword.lower() in claim.lower() for keyword in keywords):
+                atomic_claims_data[1].drop(idx, inplace=True)
+
+    # Drop duplicates
+    atomic_claims_data[0] = atomic_claims_data[0].drop_duplicates(subset=['claim'])
+    atomic_claims_data[1] = atomic_claims_data[1].drop_duplicates(subset=['claim'])
     
     atomic_claims_data[0].to_pickle('climatecheck_english_claims.pkl')
     atomic_claims_data[1].to_pickle('climatecheck_german_claims.pkl')
