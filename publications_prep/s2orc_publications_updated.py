@@ -30,7 +30,7 @@ errors = []
 save_dir = "/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/S2ORC/"
 os.makedirs(save_dir, exist_ok=True)
 
-async def fetch(session, url, params, errors):
+async def fetch(session, url, params):
     try:
         async with session.get(url, params=params, headers=headers) as response:
             response_json = await response.json()
