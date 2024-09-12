@@ -4,7 +4,6 @@ import pandas as pd
 import json
 import pickle
 import os
-from huggingface_hub import HfApi, Repository
 import argparse
 
 
@@ -43,7 +42,6 @@ async def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--s2orc_key", type=str, help="S2ORC API token")
-    parser.add_argument("--hf_key", type=str, help="Hugging Face API token")
     args = parser.parse_args()
 
     s2orc_key = args.s2orc_key
@@ -62,21 +60,9 @@ async def main():
     headers = {'x-api-key': s2orc_key}
     errors = []
     
-    # Hugging Face setup
-    hf_token = args.hf_key
-    repo_id = "datasets/rabuahmad/climatecheck-publications"
-    local_repo_path = "/netscratch/abu/Shared-Tasks/ClimateCheck/climatecheck/publications_prep/climatecheck-publications"
-    
-    api = HfApi()
-    repo = Repository(local_repo_path, clone_from=repo_id, token=hf_token)
-
-    # Ensure Git LFS is properly configured
-    os.system("git lfs install")
-    
-    try:
-        repo.git_pull()  # Pull latest changes from the repository
-    except subprocess.CalledProcessError as e:
-        print(f"Error pulling the repository: {e}")
+    # Directory to save responses
+    save_dir = "/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/S2ORC/"
+    os.makedirs(save_dir, exist_ok=True)
 
     # Initial request to get total number of responses
     async with aiohttp.ClientSession() as session:
@@ -87,7 +73,7 @@ async def main():
 
         total_responses = initial_response.get('total', 0)
 
-        # Fetch all data and upload to Hugging Face
+        # Fetch all data 
         all_data = await fetch_all_data(total_responses)
 
         # Collect data for DataFrame creation
@@ -105,7 +91,6 @@ async def main():
                     s2FieldsOfStudy.append(publication['s2FieldsOfStudy'])
 
         # Save collected data to a CSV file
-        csv_file_path = os.path.join(local_repo_path, 's2orc_publications.csv')
         s2orc_publications = pd.DataFrame({
             'id': ids,
             'doi': dois,
@@ -116,24 +101,14 @@ async def main():
             'fieldsOfStudy': fieldsOfStudy,
             's2FieldsOfStudy': s2FieldsOfStudy
         })
-        s2orc_publications.to_csv(csv_file_path)
+        s2orc_publications.to_csv(save_dir+'s2orc_publications.csv')
 
-        # Upload CSV file to Hugging Face
-        repo.git_add(csv_file_path)
-        repo.git_commit("Add aggregated data CSV")
-        repo.git_push()
-        print("Uploaded aggregated data to Hugging Face.")
-
-        # Save errors if any
-        errors_file_path = os.path.join(local_repo_path, 's2orc_errors.pkl')
-        with open(errors_file_path, 'wb') as f:
+       # Save errors
+        with open('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/s2orc_errors.pkl', 'wb') as f:
             pickle.dump(errors, f)
 
-        # Upload errors file to Hugging Face
-        repo.git_add(errors_file_path)
-        repo.git_commit("Add error log")
-        repo.git_push()
-        print("Uploaded error log to Hugging Face.")
+        print("Data fetching complete.")
+
 
 # Run the main function
 asyncio.run(main())
