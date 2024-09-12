@@ -69,7 +69,14 @@ async def main():
     
     api = HfApi()
     repo = Repository(local_repo_path, clone_from=repo_id, use_auth_token=hf_token)
-    repo.git_pull()  # Make sure the repository is up-to-date
+
+    # Ensure Git LFS is properly configured
+    os.system("git lfs install")
+    
+    try:
+        repo.git_pull()  # Pull latest changes from the repository
+    except subprocess.CalledProcessError as e:
+        print(f"Error pulling the repository: {e}")
 
     # Initial request to get total number of responses
     async with aiohttp.ClientSession() as session:
