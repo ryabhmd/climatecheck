@@ -6,8 +6,31 @@ import pickle
 import os
 import argparse
 
+url = 'https://api.semanticscholar.org/graph/v1/paper/search'
 
-async def fetch(session, url, params):
+parser = argparse.ArgumentParser()
+parser.add_argument("--s2orc_key", type=str, help="S2ORC API token")
+args = parser.parse_args()
+
+s2orc_key = args.s2orc_key
+
+query_params = {
+        'query': 'climate change',
+        'limit': 100,
+        'fieldsOfStudy': 'Environmental Science',
+        'openAccessPdf': True,
+        'fields': 'externalIds,title,year,abstract,url,fieldsOfStudy,s2FieldsOfStudy,openAccessPdf',
+        'offset': 0
+        }
+        
+headers = {'x-api-key': s2orc_key}
+errors = []
+    
+# Directory to save responses
+save_dir = "/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/S2ORC/"
+os.makedirs(save_dir, exist_ok=True)
+
+async def fetch(session, url, params, errors):
     try:
         async with session.get(url, params=params, headers=headers) as response:
             response_json = await response.json()
@@ -26,7 +49,7 @@ async def fetch(session, url, params):
 
             return response_json
     except Exception as e:
-        print((params['offset'], str(e)))
+        errors.append((params['offset'], str(e)))
         return None
 
 async def fetch_all_data(total_responses):
@@ -40,33 +63,9 @@ async def fetch_all_data(total_responses):
 
 async def main():
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--s2orc_key", type=str, help="S2ORC API token")
-    args = parser.parse_args()
-
-    s2orc_key = args.s2orc_key
-
-    url = 'https://api.semanticscholar.org/graph/v1/paper/search'
-    
-    query_params = {
-        'query': 'climate change',
-        'limit': 100,
-        'fieldsOfStudy': 'Environmental Science',
-        'openAccessPdf': True,
-        'fields': 'externalIds,title,year,abstract,url,fieldsOfStudy,s2FieldsOfStudy,openAccessPdf',
-        'offset': 0
-        }
-        
-    headers = {'x-api-key': s2orc_key}
-    errors = []
-    
-    # Directory to save responses
-    save_dir = "/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/S2ORC/"
-    os.makedirs(save_dir, exist_ok=True)
-
     # Initial request to get total number of responses
     async with aiohttp.ClientSession() as session:
-        initial_response = await fetch(session, url, query_params)
+        initial_response = await fetch(session, url, query_params. errors)
         if not initial_response:
             print("Failed to fetch initial data.")
             return
