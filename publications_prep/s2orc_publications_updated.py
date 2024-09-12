@@ -72,14 +72,14 @@ async def main():
         all_data = await fetch_all_data(total_responses)
 
         # Collect data for DataFrame creation
-        ids, dois, titles, abstract, urls, openAccessPdfs, fieldsOfStudy, s2FieldsOfStudy = [], [], [], [], [], [], [], []
+        ids, dois, titles, abstracts, urls, openAccessPdfs, fieldsOfStudy, s2FieldsOfStudy = [], [], [], [], [], [], [], []
         for response_json in all_data:
             if response_json and 'data' in response_json:
                 for publication in response_json['data']:
                     ids.append(publication['paperId'])
                     dois.append(publication['externalIds'].get('DOI', ''))
                     titles.append(publication['title'])
-                    abstract.append(publication['abstract'])
+                    abstracts.append(publication['abstract'])
                     urls.append(publication['url'])
                     openAccessPdfs.append(publication['openAccessPdf'])
                     fieldsOfStudy.append(publication['fieldsOfStudy'])
