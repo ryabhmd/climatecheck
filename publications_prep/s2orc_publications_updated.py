@@ -41,12 +41,6 @@ async def fetch(session, url, params):
             with open(file_path, 'w') as f:
                 json.dump(response_json, f)
 
-            # Upload the file to Hugging Face Hub
-            repo.git_add(file_path)
-            repo.git_commit(f"Add data batch at offset {offset}")
-            repo.git_push()
-            print(f"Uploaded data for offset {offset} to Hugging Face.")
-
             return response_json
     except Exception as e:
         errors.append((params['offset'], str(e)))
