@@ -18,7 +18,7 @@ query_params = {
         'query': 'climate change',
         'limit': 100,
         'fieldsOfStudy': 'Environmental Science',
-        'openAccessPdf': True,
+        'openAccessPdf': "True",
         'fields': 'externalIds,title,year,abstract,url,fieldsOfStudy,s2FieldsOfStudy,openAccessPdf',
         'offset': 0
         }
