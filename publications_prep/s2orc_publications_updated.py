@@ -65,7 +65,7 @@ async def main():
 
     # Initial request to get total number of responses
     async with aiohttp.ClientSession() as session:
-        initial_response = await fetch(session, url, query_params. errors)
+        initial_response = await fetch(session, url, query_params)
         if not initial_response:
             print("Failed to fetch initial data.")
             return
