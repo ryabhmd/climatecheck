@@ -44,6 +44,8 @@ async def fetch(session, url, params):
             return response_json
     except Exception as e:
         errors.append((params['offset'], str(e)))
+        print(params['offset'])
+        print(str(e))
         return None
 
 async def fetch_all_data(total_responses):
