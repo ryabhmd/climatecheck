@@ -65,7 +65,7 @@ async def main():
     # Hugging Face setup
     hf_token = args.hf_key
     repo_id = "datasets/rabuahmad/climatecheck-publications"
-    local_repo_path = "./hf_repo"
+    local_repo_path = "/netscratch/abu/Shared-Tasks/ClimateCheck/climatecheck/publications_prep/climatecheck-publications"
     
     api = HfApi()
     repo = Repository(local_repo_path, clone_from=repo_id, use_auth_token=hf_token)
