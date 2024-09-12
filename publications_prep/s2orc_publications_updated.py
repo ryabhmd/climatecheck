@@ -7,7 +7,7 @@ import os
 import argparse
 
 
-async def fetch(session, url, params):
+async def fetch(session, url, params, errors):
     try:
         async with session.get(url, params=params, headers=headers) as response:
             response_json = await response.json()
@@ -26,7 +26,7 @@ async def fetch(session, url, params):
 
             return response_json
     except Exception as e:
-        errors.append((params['offset'], str(e)))
+        print((params['offset'], str(e)))
         return None
 
 async def fetch_all_data(total_responses):
@@ -66,7 +66,7 @@ async def main():
 
     # Initial request to get total number of responses
     async with aiohttp.ClientSession() as session:
-        initial_response = await fetch(session, url, query_params)
+        initial_response = await fetch(session, url, query_params. errors)
         if not initial_response:
             print("Failed to fetch initial data.")
             return
