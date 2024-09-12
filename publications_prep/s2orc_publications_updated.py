@@ -37,7 +37,7 @@ async def fetch(session, url, params):
             offset = params['offset']
 
             # Save response to a local JSON file
-            file_path = os.path.join(local_repo_path, f"s2orc_{offset}.json")
+            file_path = os.path.join(save_dir, f"s2orc_{offset}.json")
             with open(file_path, 'w') as f:
                 json.dump(response_json, f)
 
