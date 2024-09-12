@@ -5,6 +5,8 @@ import json
 import pickle
 import os
 import argparse
+import random
+import time
 
 url = 'https://api.semanticscholar.org/graph/v1/paper/search'
 
@@ -15,50 +17,63 @@ args = parser.parse_args()
 s2orc_key = args.s2orc_key
 
 query_params = {
-        'query': 'climate change',
-        'limit': 100,
-        'fieldsOfStudy': 'Environmental Science',
-        'openAccessPdf': "True",
-        'fields': 'externalIds,title,year,abstract,url,fieldsOfStudy,s2FieldsOfStudy,openAccessPdf',
-        'offset': 0
-        }
-        
+    'query': 'climate change',
+    'limit': 100,
+    'fieldsOfStudy': 'Environmental Science',
+    'openAccessPdf': "True",
+    'fields': 'externalIds,title,year,abstract,url,fieldsOfStudy,s2FieldsOfStudy,openAccessPdf',
+    'offset': 0
+}
+
 headers = {'x-api-key': s2orc_key}
 errors = []
-    
+
 # Directory to save responses
 save_dir = "/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/S2ORC/"
 os.makedirs(save_dir, exist_ok=True)
 
-async def fetch(session, url, params):
-    try:
-        async with session.get(url, params=params, headers=headers) as response:
-            response_json = await response.json()
-            offset = params['offset']
+async def fetch(session, url, params, retries=5):
+    for attempt in range(retries):
+        try:
+            async with session.get(url, params=params, headers=headers) as response:
+                if response.status == 429:  # Too Many Requests
+                    retry_after = int(response.headers.get("Retry-After", 2))  # Get the 'Retry-After' header value if available
+                    wait_time = retry_after + random.uniform(0, 1)  # Add jitter to avoid synchronized retrying
+                    print(f"Rate limit exceeded. Retrying in {wait_time:.2f} seconds...")
+                    await asyncio.sleep(wait_time)
+                    continue  # Retry request
+                response_json = await response.json()
+                offset = params['offset']
+                
+                # Save response to a local JSON file
+                file_path = os.path.join(save_dir, f"s2orc_{offset}.json")
+                with open(file_path, 'w') as f:
+                    json.dump(response_json, f)
 
-            # Save response to a local JSON file
-            file_path = os.path.join(save_dir, f"s2orc_{offset}.json")
-            with open(file_path, 'w') as f:
-                json.dump(response_json, f)
-
-            return response_json
-    except Exception as e:
-        errors.append((params['offset'], str(e)))
-        print(params['offset'])
-        print(str(e))
-        return None
+                return response_json
+        except Exception as e:
+            errors.append((params['offset'], str(e)))
+            print(params['offset'])
+            print(str(e))
+            return None
+        await asyncio.sleep(2 ** attempt)  # Exponential backoff
 
 async def fetch_all_data(total_responses):
     tasks = []
+    semaphore = asyncio.Semaphore(10)  # Limit concurrency to 10 requests
+
+    async def sem_fetch(session, url, params):
+        async with semaphore:
+            return await fetch(session, url, params)
+
     async with aiohttp.ClientSession() as session:
         for offset in range(0, total_responses, query_params['limit']):
             query_params['offset'] = offset
-            task = asyncio.ensure_future(fetch(session, url, query_params.copy()))
+            task = asyncio.ensure_future(sem_fetch(session, url, query_params.copy()))
             tasks.append(task)
         return await asyncio.gather(*tasks)
 
 async def main():
-
     # Initial request to get total number of responses
     async with aiohttp.ClientSession() as session:
         initial_response = await fetch(session, url, query_params)
@@ -68,7 +83,7 @@ async def main():
 
         total_responses = initial_response.get('total', 0)
 
-        # Fetch all data 
+        # Fetch all data
         all_data = await fetch_all_data(total_responses)
 
         # Collect data for DataFrame creation
@@ -96,14 +111,13 @@ async def main():
             'fieldsOfStudy': fieldsOfStudy,
             's2FieldsOfStudy': s2FieldsOfStudy
         })
-        s2orc_publications.to_csv(save_dir+'s2orc_publications.csv')
+        s2orc_publications.to_csv(os.path.join(save_dir, 's2orc_publications.csv'))
 
-       # Save errors
+        # Save errors
         with open('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/s2orc_errors.pkl', 'wb') as f:
             pickle.dump(errors, f)
 
         print("Data fetching complete.")
-
 
 # Run the main function
 asyncio.run(main())
