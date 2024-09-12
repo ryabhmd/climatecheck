@@ -78,7 +78,7 @@ def main():
         full_claim_texts = []
         full_claim_texts_IDs = []
         
-        for idx, row in english_claims.iterrows():
+        for idx, row in item.iterrows():
             # Check if the row has a list of atomic claims that was created
             if type(row['atomic_claims']) == list:
                 # If so, iterate over the atomic claims and add their data to lists
