@@ -19,7 +19,7 @@ def main():
     query_params = {'query': 'climate change', 
                 'limit': 10, 
                 'fieldsOfStudy': 'Environmental Science',
-                'openAccessPdf': True,
+                'openAccessPdf': "True",
                 'fields': 'externalIds,title,year,abstract,url,fieldsOfStudy,s2FieldsOfStudy,openAccessPdf', 
                 'offset': 0}
 
