@@ -11,7 +11,7 @@ This repository contains code for creating the dataset and baseline for the Clim
 Given a claim in English extracted from a social media platform about climate change: 
 1. Find all relevant publications related to it from a pre-determined corpus of climate change research publications. 
 2. For each of those, predict whether the publication supports, refutes, or does not have enough information about the claim.\
-3. The predictions for each claim should be a list of related articles and their labels. 
+The predictions for each claim should be a list of related articles and their labels. 
 	
 **Subtask II: Cross-lingual using German claims** \
 Given a claim in German extracted from a social media platform about climate change: 
