@@ -81,10 +81,10 @@ async def main():
                         aggregated_data['keywords'].append(work.get('keywords', []))
                         aggregated_data['concepts'].append(work.get('concepts', []))
 
-        # Save aggregated data to CSV
-        openalex_publications = pd.DataFrame(aggregated_data)
-        openalex_publications.to_csv('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/openalex_publications.csv', index=False)
-        print("Aggregated data saved to CSV.")
+                # Save aggregated data to CSV
+                openalex_publications = pd.DataFrame(aggregated_data)
+                openalex_publications.to_pickle('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/openalex_publications.pkl', index=False)
+                print(f"Aggregated data saved to pkl until file {file_name}.")
 
 if __name__ == "__main__":
     asyncio.run(main())
