@@ -8,7 +8,7 @@ import argparse
 import random
 import time
 
-url = 'https://api.semanticscholar.org/graph/v1/paper/search'
+url = 'https://api.semanticscholar.org/graph/v1/paper/search/bulk'
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--s2orc_key", type=str, help="S2ORC API token")
@@ -21,8 +21,7 @@ query_params = {
     'limit': 100,
     'fieldsOfStudy': 'Environmental Science',
     'openAccessPdf': "True",
-    'fields': 'externalIds,title,year,abstract,url,fieldsOfStudy,s2FieldsOfStudy,openAccessPdf',
-    'offset': 0
+    'fields': 'externalIds,title,year,abstract,url,fieldsOfStudy,s2FieldsOfStudy,openAccessPdf'
 }
 
 headers = {'x-api-key': s2orc_key}
@@ -43,10 +42,11 @@ async def fetch(session, url, params, retries=5):
                     await asyncio.sleep(wait_time)
                     continue  # Retry request
                 response_json = await response.json()
-                offset = params['offset']
+                idx = 0 
+                params['token'] = response_json['token']
                 
                 # Save response to a local JSON file
-                file_path = os.path.join(save_dir, f"s2orc_{offset}.json")
+                file_path = os.path.join(save_dir, f"s2orc_{idx}.json")
                 with open(file_path, 'w') as f:
                     json.dump(response_json, f)
 
