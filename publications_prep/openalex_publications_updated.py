@@ -5,11 +5,11 @@ import json
 import os
 import pyalex
 from pyalex import Topics, Works
-from pyalex.config import config
+from pyalex import config
 
 # Setup the API email for OpenAlex
 EMAIL = "raia.abu_ahmad@dfki.de"
-pyalex.config.email = EMAIL
+config.email = EMAIL
 config.max_retries = 3
 config.retry_backoff_factor = 0.1
 config.retry_http_codes = [429, 500, 503]
