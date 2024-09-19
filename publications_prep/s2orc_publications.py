@@ -34,25 +34,31 @@ def main():
     errors = []
 
     while len(ids)  <= total_responses:
-        response = requests.get(url, params=query_params, headers=headers)
-        ids.extend([publication['paperId'] for publication in response.json()['data']])
-        dois.extend([publication['externalIds']['DOI'] for publication in response.json()['data']])
-        titles.extend([publication['title'] for publication in response.json()['data']])
-        abstracts.extend([publication['abstract'] for publication in response.json()['data']])
-        urls.extend([publication['url'] for publication in response.json()['data']])
-        openAccessPdfs.extend([publication['openAccessPdf'] for publication in response.json()['data']])
-        fieldsOfStudy.extend([publication['fieldsOfStudy'] for publication in response.json()['data']])
-        s2FieldsOfStudy.extend([publication['s2FieldsOfStudy'] for publication in response.json()['data']])
-        
-        token = response.json()['token']
-        query_params['token'] = token
+        try:
+            ids.extend([publication['paperId'] for publication in response.json()['data']])
+            dois.extend([publication['externalIds']['DOI'] for publication in response.json()['data']])
+            titles.extend([publication['title'] for publication in response.json()['data']])
+            abstracts.extend([publication['abstract'] for publication in response.json()['data']])
+            urls.extend([publication['url'] for publication in response.json()['data']])
+            openAccessPdfs.extend([publication['openAccessPdf'] for publication in response.json()['data']])
+            fieldsOfStudy.extend([publication['fieldsOfStudy'] for publication in response.json()['data']])
+            s2FieldsOfStudy.extend([publication['s2FieldsOfStudy'] for publication in response.json()['data']])
+            
+            token = response.json()['token']
+            query_params['token'] = token
+            print(f"Got data for idx {idx}")
 
+        except:
+            errors.append((idx, response.text))
+            print(f"Error for {idx}: {response.text}")
+            
         # Save response.json() to a json file
         with open(f"/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/S2ORC/s2orc_{idx}.json", 'w') as f:
             json.dump(response.json(), f)
-        print(f"Saved response of offset {offset}")
+        print(f"Saved response of {idx}")
             
         idx += 1
+        response = requests.get(url, params=query_params, headers=headers)
         time.sleep(10)
 
 
