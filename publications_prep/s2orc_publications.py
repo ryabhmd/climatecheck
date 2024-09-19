@@ -28,7 +28,7 @@ def main():
 
     total_responses = response.json()['total']
 
-    ids, dois, titles, abstracts, urls, openAccessPdfs, fieldsOfStudy, s2FieldOfStudy = [], [], [], [], [], [], [], []
+    ids, dois, titles, abstracts, urls, openAccessPdfs, fieldsOfStudy, s2FieldsOfStudy = [], [], [], [], [], [], [], []
 
     idx = 0
     errors = []
