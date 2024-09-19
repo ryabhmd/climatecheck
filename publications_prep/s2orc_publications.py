@@ -43,19 +43,20 @@ def main():
             openAccessPdfs.extend([publication['openAccessPdf'] for publication in response.json()['data']])
             fieldsOfStudy.extend([publication['fieldsOfStudy'] for publication in response.json()['data']])
             s2FieldsOfStudy.extend([publication['s2FieldsOfStudy'] for publication in response.json()['data']])
-            
-            token = response.json()['token']
-            query_params['token'] = token
+        
             print(f"Got data for idx {idx}")
 
-        except:
-            errors.append((idx, response.text))
-            print(f"Error for {idx}: {response.text}")
+        except Exception as error:
+            errors.append((idx, error))
+            print(f"Error for {idx}: {error}")
             
         # Save response.json() to a json file
         with open(f"/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/S2ORC/s2orc_{idx}.json", 'w') as f:
             json.dump(response.json(), f)
         print(f"Saved response of {idx}")
+
+        token = response.json()['token']
+        query_params['token'] = token
             
         idx += 1
         response = requests.get(url, params=query_params, headers=headers)
