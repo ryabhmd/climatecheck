@@ -52,7 +52,7 @@ async def main():
         topic_ids = await fetch_topics(session)
         
         # Fetch works asynchronously
-        await fetch_works(session, topic_ids, idx=14138)
+        await fetch_works(session, topic_ids, idx=38669)
 
         # Aggregate data into a DataFrame
         aggregated_data = {

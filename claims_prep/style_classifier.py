@@ -57,7 +57,7 @@ def main():
 
     classifier_data = pd.concat([tweets_df, non_tweets_df], ignore_index=True)
 
-    labels = [1 if label == 'tweet' else 0 for label in classifier_data['label'].values]
+    labels = [1 if label == 'social_media' else 0 for label in classifier_data['label'].values]
     classifier_data['label'] = labels
 
     dataset = Dataset.from_pandas(classifier_data)
@@ -94,7 +94,7 @@ def main():
 
     trainer.train()
 
-    trainer.save_model("results/models")
+    trainer.save_model("results_de/models")
 
     # Evaluate model
     predictions = trainer.predict(tokenized_dataset["test"])
