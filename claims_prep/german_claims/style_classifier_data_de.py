@@ -1,95 +1,103 @@
 import pandas as pd
 from datasets import load_dataset
+import requests
+from bs4 import BeautifulSoup
+import nltk
+import re
 
+nltk.download('punkt')
 """
 Script to prepare German data for the Text Style Classifier. 
-Tweet data from: Alienmaster/SB10k + cardiffnlp/tweet_sentiment_multilingual german subset
-Non-tweet data from: wikipedia + community-datasets/gnad10
+Tweet data from: GerCCT + r/Kliawandel german subset
+Non-tweet data from: Sentence-tokenized Wikipedia articles
 
 """
 
 def prep_tweets_data():
 
-    sb10k = load_dataset('Alienmaster/SB10k')
-    tweet_sentiment = load_dataset('cardiffnlp/tweet_sentiment_multilingual', 'german')
+    german_data = pd.read_pickle('final_german_claims.pkl')
 
-    # Process sb10k
-    sb10k_train = sb10k['train'].remove_columns(['Sentiment', 'Normalized', 'POS-Tags', 'Dependency Labels', 'additional Annotations'])
-    sb10k_test = sb10k['test'].remove_columns(['Sentiment', 'Normalized', 'POS-Tags', 'Dependency Labels', 'additional Annotations'])
-    sb10k_dev = sb10k['dev'].remove_columns(['Sentiment', 'Normalized', 'POS-Tags', 'Dependency Labels', 'additional Annotations'])
+    gercct = german_data[german_data['source'] == 'GerCCT']
+    r_klimawandel = german_data[german_data['source'] == 'Klimawandel-Subreddit']
 
-    sb10k_train = sb10k_train.to_pandas()
-    sb10k_test = sb10k_test.to_pandas()
-    sb10k_dev = sb10k_dev.to_pandas()
-    sb10k_df = pd.concat([sb10k_train, sb10k_test, sb10k_dev], ignore_index=True)
+    klimawandel_sentences = []
+    for sentence in r_klimawandel['claim']:
+        split_sentences = nltk.tokenize.sent_tokenize(sentence, language='german')
+        for sentence in split_sentences:
+            if len(sentence) >= 50:
+                klimawandel_sentences.append(sentence)
 
-    sb10k_df = sb10k_df.drop(columns=['ID'])
-    sb10k_df = sb10k_df.rename(columns={'Text': 'text'})
-    sb10k_df = sb10k_df.drop_duplicates(subset=['text'])
+    klimawandel_sentences = pd.DataFrame(klimawandel_sentences, columns=['claim'])
 
-    # Process tweet_sentiment 
-    tweet_sentiment_train = tweet_sentiment['train'].remove_columns(['label'])
-    tweet_sentiment_test = tweet_sentiment['test'].remove_columns(['label'])
-    tweet_sentiment_dev = tweet_sentiment['validation'].remove_columns(['label'])
-    
-    tweet_sentiment_train = tweet_sentiment_train.to_pandas()
-    tweet_sentiment_test = tweet_sentiment_test.to_pandas()
-    tweet_sentiment_dev = tweet_sentiment_dev.to_pandas()
-    tweet_sentiment_df = pd.concat([tweet_sentiment_train, tweet_sentiment_test, tweet_sentiment_dev], ignore_index=True)
-    tweet_sentiment_df = tweet_sentiment_df.drop_duplicates(subset=['text'])
+    gercct = gercct[['claim']]
+    gercct = gercct.rename(columns={'claim': 'text'})
 
-    # merge sb10k_df and tweet_sentiment_df
-    tweets_df = pd.concat([sb10k_df, tweet_sentiment_df], ignore_index=True)
-    labels_tweets = ['tweet'] * len(tweets_df)
-    tweets_df['label'] = labels_tweets
+    klimawandel_sentences = klimawandel_sentences[['claim']]
+    klimawandel_sentences = klimawandel_sentences.rename(columns={'claim': 'text'})
 
-    # keep random 10K and make new index
-    tweets_df = tweets_df.sample(n=10000, random_state=42)
-    tweets_df = tweets_df.reset_index(drop=True)
+    klimawandel_sentences = klimawandel_sentences.drop_duplicates(subset=['text'])
+    gercct = gercct.drop_duplicates(subset=['text'])
 
-    return tweets_df
+    social_media_de_df = pd.concat([gercct, klimawandel_sentences], ignore_index=True)
+
+    labels_tweets = ['social_media'] * len(social_media_de_df)
+    social_media_de_df['label'] = labels_tweets
+
+    return social_media_de_df
 
 def prep_non_tweets_data():
 
-    wiki_de = load_dataset("wikipedia", "20220301.de", trust_remote_code=True)
-    news_de = load_dataset("community-datasets/gnad10")
+    urls = [
+    "https://de.wikipedia.org/wiki/Klimawandel",
+    "https://de.wikipedia.org/wiki/Globale_Erw%C3%A4rmung",
+    "https://de.wikipedia.org/wiki/Forschungsgeschichte_des_Klimawandels",
+    "https://de.wikipedia.org/wiki/Klimahysterie",
+    "https://de.wikipedia.org/wiki/Klimawandelleugnung",
+    "https://de.wikipedia.org/wiki/Folgen_der_globalen_Erw%C3%A4rmung_in_der_Arktis#Schrumpfendes_arktisches_Meereis",
+    "https://de.wikipedia.org/wiki/Folgen_der_globalen_Erw%C3%A4rmung",
+    "https://de.wikipedia.org/wiki/Klimamodell",
+    "https://de.wikipedia.org/wiki/Anpassung_an_die_globale_Erw%C3%A4rmung",
+    "https://de.wikipedia.org/wiki/Kontroverse_um_die_globale_Erw%C3%A4rmung",
+    "https://de.wikipedia.org/wiki/UN-Klimakonferenz_in_Dubai_2023",
+    "https://de.wikipedia.org/wiki/Umweltbewegung#Klimaschutz",
+    "https://de.wikipedia.org/wiki/Treibhausgas",
+    "https://de.wikipedia.org/wiki/Treibhauseffekt",
+    "https://de.wikipedia.org/wiki/Klimaschutz"
+    ]
 
-    # get random 5K from wiki_de
-    wiki_de_sample = wiki_de['train'].shuffle(seed=42).select(range(5000))
-    # get random 5K from news_de['train']
-    news_de_sample = news_de['train'].shuffle(seed=42).select(range(5000))
+    texts = []
+    for url in URLs:
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        for p in soup.find_all('p'):
+            texts.append(p.text)
 
-    # convert wiki_de_sample to dataframe and drop id, url, and title
-    wiki_de_sample = wiki_de_sample.to_pandas()
-    wiki_de_sample = wiki_de_sample.drop(columns=['id', 'url', 'title'])
-    # dedup
-    wiki_de_sample = wiki_de_sample.drop_duplicates(subset=['text'])
-    # convert news_de_sample to dataframe and drop label
-    news_de_sample = news_de_sample.to_pandas()
-    news_de_sample = news_de_sample.drop(columns=['label'])
-    # dedup
-    news_de_sample = news_de_sample.drop_duplicates(subset=['text'])
+    sentences = []
+    for text in texts:
+        split_sentences = nltk.tokenize.sent_tokenize(text, language='german')
+        # add sentences only if they are not numbers in square brackets such as [42]
+        for sentence in split_sentences:
+            if not re.search(r'\[.*?\]', sentence):
+                sentences.append(sentence)
 
-    # merge wiki_de_sample and news_de_sample
-    non_tweets_df = pd.concat([wiki_de_sample, news_de_sample], ignore_index=True)
-
-    labels = ['non-tweet'] * len(non_tweets_df)
-    non_tweets_df['label'] = labels
-
-    return non_tweets_df
+    non_social_media_de_df = pd.DataFrame(sentences, columns=['text'])
+    labels_non_tweets = ['non_social_media'] * len(non_social_media_de_df)
+    non_social_media_de_df['label'] = labels_non_tweets
+        
+    return non_social_media_de_df
 
 
 def main():
 
-    tweets_df = prep_tweets_data()
+    social_media_de_df = prep_tweets_data()
 
     # Save tweets data
-    tweets_df.to_pickle('tweets_df_de.pkl')
+    social_media_de_df.to_pickle('social_media_de_df.pkl')
 
-    non_tweets_df = prep_non_tweets_data()
+    non_social_media_de_df = prep_non_tweets_data()
 
     # Save non-tweets data
-    non_tweets_df.to_pickle('non_tweets_df_de.pkl')
+    non_social_media_de_df.to_pickle('non_social_media_de_df.pkl')
 
 
 if __name__ == "__main__":
