@@ -56,7 +56,25 @@ def main():
             claims.append(claim)
             
         try:
-            response = model.generate_content(f"I will give you a claim extracted from a news article and I want you to rephrase it as if you were a layperson tweeting about it. Take into account stylistic features of social media text such as use of acronyms and abbreviations, informal language and internet slang, use of hashtags, mentions and emojis, and use of non-complex and frequent words. Also pay attention to any verb tenses and use of named entities. Give me three tweet options in JSON format. The claim: {claim}")
+            response = model.generate_content("""
+            Task: Given a claim extracted from a news article, produce a rephrasing as if you are a layperson tweeting about it. 
+            Constraints: 
+            1. Take into account stylistic features of social media text such as use of slang and informal language. **However, keep in mind that this is a serious topic and not every tweet needs to have emojis and slang.**
+            2. Do not overdo your text generations. Keep them plausible enough to believe a human wrote them. 
+            3. Introduce variance in rhetoric and syntactic structures of your tweets. **Not every tweet needs to contain a question.** 
+            4. **Generate tweets in a neutral tone. Do not add irony or satire.** 
+            5. **Keep the scientific claim that is present in the original claim** 
+            6. Give three output options in a JSON format {'tweets' : [tweet1, tweet2, tweet3]}. 
+            7. Before giving your answer, rewrite the prompt, expand the task at hand, and only then respond. 
+            8. If you have follow-up questions, generate them and then answer them before giving the final output.
+            Examples of tweets about a similar topic: 
+            1. Fossil fuel projects destroy fragile ecosystems, harm social harmony in local communities, and contribute to millions of deaths by polluting the air. Fossil finance is an issue of justice. #FridaysForFuture #ClimateStrike 
+            2. Fruit trees produce fresh oxygen, giving you &amp; your family cleaner air to breathe, as well as encouraging wildlife to flourish #COP27 #COP15 #ReFi #Web3 #ImplementPromisesNow #LossAndDamage #PeopleNotProfit #ClimateAction #ClimateJustice #climateStrike #Climate 
+            3. your car tires are the largest source of #microplastics pollution on earth ! #gocarfree #banprivatecars #bikedontdrive #eatonlyplants and stop flying !!! #Istayontheground #flygskam #stopecocide  
+            4. A study found that at least 95% of wood pallets are recycled within the manufacturing and industrial packaging industry. Recycling, waste reduction, and material utilization are all important parts of making Conner as #sustainable as possible. 
+            5. #RegenerativeAgriculture: Increased #soil #carbon sequestration slows/may reverse #globalwarming. The amt of carbon stored in soil is more than  what we release each year from all sectors. #Learn more in #RecipeForSurvival! #FridaysForFuture  13 days! #Sustainability. 
+            Claim: """ + claim + """
+            Output:""")
             claim_rephrasings.append(response.text)
 
       except Exception as e:
@@ -85,7 +103,25 @@ def main():
         claim = row['claim']
         
         try:
-            response = model.generate_content(f"I will give you a claim extracted from a news article and I want you to rephrase it as if you were a layperson tweeting about it. Take into account stylistic features of social media text such as use of acronyms and abbreviations, informal language and internet slang, use of hashtags, mentions and emojis, and use of non-complex and frequent words. Use the present tense more frequently and do not use many named entities. Give me three tweet options in JSON format.” The claim: {claim}")
+            response = model.generate_content("""
+            Task: Given a claim extracted from a news article, produce a rephrasing as if you are a layperson tweeting about it. 
+            Constraints: 
+            1. Take into account stylistic features of social media text such as use of slang and informal language. **However, keep in mind that this is a serious topic and not every tweet needs to have emojis and slang.**
+            2. Do not overdo your text generations. Keep them plausible enough to believe a human wrote them. 
+            3. Introduce variance in rhetoric and syntactic structures of your tweets. **Not every tweet needs to contain a question.** 
+            4. **Generate tweets in a neutral tone. Do not add irony or satire.** 
+            5. **Keep the scientific claim that is present in the original claim** 
+            6. Give three output options in a JSON format {'tweets' : [tweet1, tweet2, tweet3]}. 
+            7. Before giving your answer, rewrite the prompt, expand the task at hand, and only then respond. 
+            8. If you have follow-up questions, generate them and then answer them before giving the final output.
+            Examples of tweets about a similar topic: 
+            1. Fossil fuel projects destroy fragile ecosystems, harm social harmony in local communities, and contribute to millions of deaths by polluting the air. Fossil finance is an issue of justice. #FridaysForFuture #ClimateStrike 
+            2. Fruit trees produce fresh oxygen, giving you &amp; your family cleaner air to breathe, as well as encouraging wildlife to flourish #COP27 #COP15 #ReFi #Web3 #ImplementPromisesNow #LossAndDamage #PeopleNotProfit #ClimateAction #ClimateJustice #climateStrike #Climate 
+            3. your car tires are the largest source of #microplastics pollution on earth ! #gocarfree #banprivatecars #bikedontdrive #eatonlyplants and stop flying !!! #Istayontheground #flygskam #stopecocide  
+            4. A study found that at least 95% of wood pallets are recycled within the manufacturing and industrial packaging industry. Recycling, waste reduction, and material utilization are all important parts of making Conner as #sustainable as possible. 
+            5. #RegenerativeAgriculture: Increased #soil #carbon sequestration slows/may reverse #globalwarming. The amt of carbon stored in soil is more than  what we release each year from all sectors. #Learn more in #RecipeForSurvival! #FridaysForFuture  13 days! #Sustainability. 
+            Claim: """ + claim + """
+            Output:""")
             gemini_rephrasings.append(response.text)
         
         except Exception as e:
