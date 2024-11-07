@@ -12,7 +12,7 @@ def iterate_json_files(directory, pub_id):
                 try:
                     json_file = json.load(f)
                     json_data = json_file['data']
-                    for publication in json_data['data']:
+                    for publication in json_data:
                         if publication['paperId'] == pub_id:
                             print(f'Found abstract for publication {pub_id}.')
                             return publication['abstract']
