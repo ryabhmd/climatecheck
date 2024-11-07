@@ -33,7 +33,7 @@ def main():
     
     for index, row in tqdm(s2orc_publications.iterrows(), total=s2orc_publications.shape[0]):
         pub_id = row['id']
-        absrtact = iterate_json_files(directory, pub_id)
+        abstract = iterate_json_files(directory, pub_id)
         all_abstracts.append(abstract)
 
     s2orc_publications['abstract'] = all_abstracts
