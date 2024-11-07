@@ -1,6 +1,7 @@
 import json
 import pandas as pd
 from tqdm import tqdm
+import os
 
 def iterate_json_files(directory, pub_id):
     
