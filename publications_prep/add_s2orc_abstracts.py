@@ -18,8 +18,8 @@ def iterate_json_files(directory, pub_id):
           json_data = json_file['data']
           for publication in json_data['data']:
             if publication['paperId'] == pub_id:
+                print(f'Found abstract for publication {pub_id}.')
                 return publication['abstract']
-              print(f'Found abstract for publication {pub_id}.')
         except json.JSONDecodeError as e:
           print(f"Error decoding JSON in file {filename}: {e}")
 
