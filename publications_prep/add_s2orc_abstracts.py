@@ -40,5 +40,6 @@ def main():
     s2orc_publications.to_pickle('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/s2orc_publications_with_abstracts.pkl')
 
 
-
+if __name__ == "__main__":
+    main()
 
