@@ -19,6 +19,7 @@ def iterate_json_files(directory, pub_id):
                 except json.JSONDecodeError as e:
                     print(f"Error decoding JSON in file {filename}: {e}")
                     
+    print(f"File not found {pub_id}.")
     return None
 
 
