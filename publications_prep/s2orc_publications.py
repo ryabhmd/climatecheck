@@ -51,7 +51,7 @@ def main():
             print(f"Error for {idx}: {error}")
             
         # Save response.json() to a json file
-        with open(f"/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/S2ORC/s2orc_{idx}.json", 'w') as f:
+        with open(f"/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/S2ORCV2/s2orc_{idx}.json", 'w') as f:
             json.dump(response.json(), f)
         print(f"Saved response of {idx}")
 
@@ -67,12 +67,14 @@ def main():
         'id': ids, 
         'doi': dois, 
         'title': titles, 
+        'abstract': abstracts,
+        'url': urls,
         'openAccessPdf': openAccessPdfs, 
         'fieldsOfStudy': fieldsOfStudy, 
         's2FieldsOfStudy': s2FieldsOfStudy
         })
         
-    s2orc_publications.to_pickle('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/s2orc_publications.pkl')
+    s2orc_publications.to_pickle('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/s2orc_publications_v2.pkl')
 
     with open('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/s2orc_errors.pkl', 'wb') as f:
         pickle.dump(errors, f)
