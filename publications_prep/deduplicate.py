@@ -10,7 +10,7 @@ def main():
 
 	open_alex_publlications = pd.read_pickle('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/combined_climate_works_filtered.pkl')
 	print(open_alex_publlications.columns)
-	open_alex_publlications.to_parquet('openalex_publication.parquet')
+	open_alex_publlications.to_parquet('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/openalex_publication.parquet')
 	
 	print(f'Number of S2ORC publications: {len(s2orc_publications)}.')
 	print(f'Number of OpenAlex publications: {len(open_alex_publlications)}.')
