@@ -18,7 +18,7 @@ def preprocess(text):
 def main():
 
     claims = pd.read_pickle('/netscratch/abu/Shared-Tasks/ClimateCheck/data/claims/final_english_claims_reduced.pkl')
-    en_queries = en_claims['atomic_claim'].tolist()
+    en_queries = claims['atomic_claim'].tolist()
 
     chunk_size = 10_000
     parquet_file = pq.ParquetFile('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/merged_publications_only_en.parquet')
