@@ -6,6 +6,7 @@ import pyarrow
 import pyarrow.parquet as pq
 from tqdm import tqdm
 import nltk
+nltk.download('punkt')
 nltk.download('punkt_tab')
 
 def preprocess(text):
