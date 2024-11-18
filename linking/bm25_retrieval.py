@@ -36,7 +36,7 @@ def main():
             tokenized_corpus = [preprocess(doc) for doc in pubs_corpus]
             bm25 = BM25Okapi(tokenized_corpus)
             # save all scores for a query
-            scores = bm25.get_scores(tokenized_test_query)
+            scores = bm25.get_scores(tokenized_query)
             scores_abs = [(i, scores[i], pubs_corpus[i]) for i in range(len(scores))]
             all_scores.extend(scores_abs)
         
@@ -47,7 +47,7 @@ def main():
 
     claims['bm25_results'] = top_abstracts
 
-    claims.to_pickle('final_english_claims_reduced_bm25.pkl')
+    claims.to_pickle('/netscratch/abu/Shared-Tasks/ClimateCheck/data/claims/final_english_claims_reduced_bm25.pkl')
        
 if __name__ == "__main__":
     main()
