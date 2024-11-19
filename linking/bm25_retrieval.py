@@ -30,13 +30,15 @@ def main():
     chunk_size = 10_000
     tokenized_corpus = []
     abstract_index = []
+    global_index = 0
     
     # Pre-tokenize and store corpus in chunks
     for batch in tqdm(parquet_file.iter_batches(batch_size=chunk_size), desc='Preprocessing Corpus'):
         pubs = batch.to_pandas()
         for idx, abstract in enumerate(pubs['abstract'].tolist()):
             tokenized_corpus.append(preprocess(abstract))
-            abstract_index.append((batch.offset + idx, abstract))  # Store index and original abstract
+            abstract_index.append((global_index, abstract))  # Store index and original abstract
+            global_index += 1
             
     # Initialize BM25 once with the entire preprocessed corpus
     bm25 = BM25Okapi(tokenized_corpus)
