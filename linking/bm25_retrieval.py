@@ -7,6 +7,9 @@ import pyarrow.parquet as pq
 from tqdm import tqdm
 import heapq
 import nltk
+import argparse
+from transformers import MBartForConditionalGeneration, MBart50TokenizerFast
+
 nltk.download('punkt')
 nltk.download('punkt_tab')
 
@@ -17,14 +20,42 @@ def preprocess(text):
     tokens = [word for word in tokens if word not in string.punctuation]  # Remove punctuation
     return tokens
 
+def translate_claims_german_to_english(claims):
+    """
+    Function to translate a list of German claims to English
+    """
+    translated_claims = []
+    for claim in tqdm(claims, desc='Translating Claims'):
+        # Tokenize the German text
+        inputs = tokenizer(claim, return_tensors="pt", max_length=512, truncation=True)
+        # Generate translation
+        translated_tokens = model.generate(**inputs, forced_bos_token_id=tokenizer.lang_code_to_id[target_lang])
+        # Decode the translated text
+        translated_text = tokenizer.decode(translated_tokens[0], skip_special_tokens=True)
+        translated_claims.append(translated_text)
+    return translated_claims
+
 def main():
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--lang", type=str, help="Language of Claims")
+    parser.add_argument("--claims_path", type=str, help="Path for claims dataset (pickle, including 'atomic_claim' column)")
+    parser.add_argument("--pub_path", type=str, help="Path for Publications dataset (parquet)")
+    parser.add_argument("--output_path", type=str, help="Path for output")
+
+    args = parser.parse_args()
+
+    lang = args.lang
+    claims_path = args.claims_path
+    pub_path = args.pub_path
+    output_path = args.output_path
+
     # Load the claims
-    claims = pd.read_pickle('/netscratch/abu/Shared-Tasks/ClimateCheck/data/claims/final_english_claims_reduced.pkl')
-    en_queries = claims['atomic_claim'].tolist()
+    claims = pd.read_pickle(claims_path)
+    queries = claims['atomic_claim'].tolist()
     
     # Load publications as a ParquetFile
-    parquet_file = pq.ParquetFile('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/merged_publications_only_en.parquet')
+    parquet_file = pq.ParquetFile(pub_path)
     
     # Preprocess publications corpus
     chunk_size = 10_000
@@ -42,12 +73,21 @@ def main():
             
     # Initialize BM25 once with the entire preprocessed corpus
     bm25 = BM25Okapi(tokenized_corpus)
+
+    if lang == 'de':
+        # Load the MBart model and tokenizer for translation
+        model_name = "facebook/mbart-large-50-many-to-many-mmt"
+        tokenizer = MBart50TokenizerFast.from_pretrained(model_name)
+        model = MBartForConditionalGeneration.from_pretrained(model_name)
+        target_lang = "en_XX"
+        queries = translate_claims_german_to_english(queries)
+
     
     # Prepare to store results
     top_abstracts = []
     
     # Iterate through each claim
-    for query in tqdm(en_queries, desc='Processing Claims'):
+    for query in tqdm(queries, desc='Processing Claims'):
         tokenized_query = preprocess(query)
         # Compute scores for the entire corpus
         scores = bm25.get_scores(tokenized_query)
@@ -64,7 +104,7 @@ def main():
     claims['bm25_results'] = top_abstracts
     
     # Save the updated claims dataframe
-    claims.to_pickle('/netscratch/abu/Shared-Tasks/ClimateCheck/data/claims/final_english_claims_reduced_bm25.pkl')
+    claims.to_pickle(output_path)
        
 if __name__ == "__main__":
     main()
