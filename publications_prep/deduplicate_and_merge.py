@@ -37,18 +37,19 @@ def merge(open_alex_publlications, s2orc_publications_deduped):
 	open_alex_publlications['source'] = 'OpenAlex'
 
 	merged_df = pd.concat([s2orc_publications_deduped, open_alex_publlications], ignore_index=True)
+	
+	# remove rows from merged_df that don't have a value in 'title'
+	merged_df = merged_df.dropna(subset=['title'])
+	merged_df = merged_df.dropna(subset=['abstract'])
+	merged_df = merged_df.dropna(subset=['url'])
 
+	# deduplicate rows based on doi, title (lowered), and abstract (lowered)
 	merged_df['title_lowered'] = [title.lower() for title in merged_df['title'].tolist()]
 	merged_df['abstract_lowered'] = [abstract.lower() for title in merged_df['abstract'].tolist()]
 
 	merged_df = merged_df.drop_duplicates(subset=['doi'])
 	merged_df = merged_df.drop_duplicates(subset=['title_lowered'])
 	merged_df = merged_df.drop_duplicates(subset=['title_lowered'])
-
-	# remove rows from merged_df that don't have a value in 'title'
-	merged_df = merged_df.dropna(subset=['title'])
-	merged_df = merged_df.dropna(subset=['abstract'])
-	merged_df = merged_df.dropna(subset=['url'])
 
 	# remove rows with 'title' of less than 10 chars
 	merged_df = merged_df[merged_df['title'].str.len() > 10]
