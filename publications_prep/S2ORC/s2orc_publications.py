@@ -77,3 +77,10 @@ def main():
         
     s2orc_publications.to_pickle('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/s2orc_publications_v3_citations.pkl')
 
+    with open('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/s2orc_errors.pkl', 'wb') as f:
+        pickle.dump(errors, f)
+
+
+
+if __name__ == "__main__":
+    main()

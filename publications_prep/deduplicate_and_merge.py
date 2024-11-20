@@ -45,11 +45,11 @@ def merge(open_alex_publlications, s2orc_publications_deduped):
 
 	# deduplicate rows based on doi, title (lowered), and abstract (lowered)
 	merged_df['title_lowered'] = [title.lower() for title in merged_df['title'].tolist()]
-	merged_df['abstract_lowered'] = [abstract.lower() for title in merged_df['abstract'].tolist()]
+	merged_df['abstract_lowered'] = [abstract.lower() for abstract in merged_df['abstract'].tolist()]
 
 	merged_df = merged_df.drop_duplicates(subset=['doi'])
 	merged_df = merged_df.drop_duplicates(subset=['title_lowered'])
-	merged_df = merged_df.drop_duplicates(subset=['title_lowered'])
+	merged_df = merged_df.drop_duplicates(subset=['abstract_lowered'])
 
 	# remove rows with 'title' of less than 10 chars
 	merged_df = merged_df[merged_df['title'].str.len() > 10]
