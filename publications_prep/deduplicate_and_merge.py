@@ -5,7 +5,7 @@ import langdetect
 from langdetect import detect, detect_langs
 import pyalex
 from pyalex import Works, config
-
+from tqdm import tqdm
 
 def merge(open_alex_publlications, s2orc_publications_deduped):
 
@@ -60,7 +60,7 @@ def merge(open_alex_publlications, s2orc_publications_deduped):
 def filter_non_en(merged_df):
 
 	non_en_indices = []
-	for index, row in merged_df.iterrows():
+	for index, row in tqdm(merged_df.iterrows(), total=merged_df.shape[0], desc='Filtering non EN'):
 		abstract = row['abstract']
 		title = row['title']
 		# Detect language of abstract using langdetect
@@ -85,7 +85,7 @@ def filter_citations(filtered_df):
 	config.retry_backoff_factor = 0.1
 	config.retry_http_codes = [429, 500, 503]
 
-	for index, row in filtered_df.iterrows():
+	for index, row in tqdm(filtered_df.iterrows(), total=filtered_df.shape[0], desc='Getting citation counts for OpenAlex'):
 		if row['source'] == 'OpenAlex':
 			citations_count = Works()[row['doi']]['cited_by_count']
 			filtered_df.at['citation_count'] = citations_count
