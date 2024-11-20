@@ -11,3 +11,5 @@ praw
 langdetect
 numpy
 pyalex
+tqdm
+pathlib
