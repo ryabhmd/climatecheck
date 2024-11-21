@@ -6,6 +6,11 @@ from langdetect import detect, detect_langs
 import pyalex
 from pyalex import Works, config
 from tqdm import tqdm
+from concurrent.futures import ThreadPoolExecutor
+import numpy as np
+
+CHUNK_SIZE = 10000
+citation_cache = {}
 
 def merge(open_alex_publlications, s2orc_publications_deduped):
 
@@ -57,6 +62,64 @@ def merge(open_alex_publlications, s2orc_publications_deduped):
 
 	return merged_df
 
+def fetch_citation_count(row):
+    """Fetch citation count for a single row."""
+    doi = row['doi']
+    
+    # Check cache first
+    if doi in citation_cache:
+        return citation_cache[doi]
+
+    # Fetch from OpenAlex API
+    if row['source'] == 'OpenAlex':
+        try:
+            citation_count = Works()[doi]['cited_by_count']
+        except Exception as e:
+            print(f"Error fetching citation for DOI {doi}: {e}")
+            citation_count = None
+    else:
+        citation_count = row['citation_count']
+
+    # Cache the result
+    citation_cache[doi] = citation_count
+    return citation_count
+
+def process_chunk(chunk):
+    """Process a chunk of the DataFrame."""
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        citation_counts = list(
+            tqdm(
+                executor.map(fetch_citation_count, [row for _, row in chunk.iterrows()]),
+                total=chunk.shape[0],
+                desc="Fetching citation counts",
+            )
+        )
+    chunk['citation_count'] = citation_counts
+    return chunk
+
+def chunk_dataframe(df, chunk_size):
+    """Split DataFrame into chunks."""
+    num_chunks = int(np.ceil(len(df) / chunk_size))
+    for i in range(num_chunks):
+        yield df[i * chunk_size:(i + 1) * chunk_size]
+
+def filter_citations(file_path):
+    """Filter Parquet file in manageable chunks."""
+    # Load full Parquet file
+    full_df = pd.read_parquet(file_path, engine="pyarrow")
+    
+    filtered_rows = []
+    for i, chunk in enumerate(chunk_dataframe(full_df, CHUNK_SIZE)):
+        print(f"Processing chunk {i+1}/{len(full_df)//CHUNK_SIZE + 1}...")
+        processed_chunk = process_chunk(chunk)
+        # Apply filtering condition (e.g., citation_count >= 10)
+        filtered_chunk = processed_chunk[processed_chunk['citation_count'] >= 10]
+        filtered_rows.append(filtered_chunk)
+
+    # Combine all filtered chunks
+    final_df = pd.concat(filtered_rows, ignore_index=True)
+    return final_df
+
 def filter_non_en(merged_df):
 
 	non_en_indices = []
@@ -78,20 +141,7 @@ def filter_non_en(merged_df):
 
 	return filtered_df
 
-def filter_citations(filtered_df):
 
-	pyalex.config.email = "raia.abu_ahmad@dfki.de"
-	config.max_retries = 0
-	config.retry_backoff_factor = 0.1
-	config.retry_http_codes = [429, 500, 503]
-
-	for index, row in tqdm(filtered_df.iterrows(), total=filtered_df.shape[0], desc='Getting citation counts for OpenAlex'):
-		if row['source'] == 'OpenAlex':
-			citations_count = Works()[row['doi']]['cited_by_count']
-			filtered_df.at['citation_count'] = citations_count
-
-	filtered_df = filtered_df[filtered_df['citation_count'] >= 10]
-	return filtered_df
 
 def main():
 
@@ -116,11 +166,12 @@ def main():
 	filtered_df = filter_non_en(merged_df)
 	filtered_df.to_parquet('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/merged_publications_only_en_v2.parquet')
 	print(f'Number of merged publications after removing non English ones: {len(filtered_df)}.')
-
+	
 	# drop rows with less than 10 citations
-	filtered_df = filter_citations(filtered_df)
-	filtered_df.to_parquet('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/merged_publications_only_en_citations_v2.parquet')
-	print(f'Number of merged publications after removing those with less than 10 citations: {len(filtered_df)}.')
+	filtered_df = filter_citations('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/merged_publications_only_en_v2.parquet')
+	filtered_df.to_parquet(
+    '/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/merged_publications_only_en_citations_v2.parquet')
+	print(f"Number of merged publications after removing those with less than 10 citations: {len(filtered_df)}.")
 
 if __name__ == "__main__":
     main()
