@@ -77,8 +77,8 @@ def main():
     if lang == 'de':
         # Load the MBart model and tokenizer for translation
         model_name = "facebook/mbart-large-50-many-to-many-mmt"
-        tokenizer = MBart50TokenizerFast.from_pretrained(model_name)
         model = MBartForConditionalGeneration.from_pretrained(model_name)
+        tokenizer = MBart50TokenizerFast.from_pretrained(model_name)
         target_lang = "en_XX"
         queries = translate_claims_german_to_english(queries)
 
