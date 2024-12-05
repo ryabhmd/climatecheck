@@ -24,6 +24,13 @@ def translate_claims_german_to_english(claims, tokenizer, model):
     """
     Function to translate a list of German claims to English
     """
+    # Load the MBart model and tokenizer for translation
+    model_name = "facebook/mbart-large-50-many-to-many-mmt"
+    model = MBartForConditionalGeneration.from_pretrained(model_name)
+    tokenizer = MBart50TokenizerFast.from_pretrained(model_name)
+    tokenizer.src_lang = "de_DE"
+    target_lang = "en_XX"
+
     translated_claims = []
     for claim in tqdm(claims, desc='Translating Claims'):
         # Tokenize the German text
@@ -75,13 +82,7 @@ def main():
     bm25 = BM25Okapi(tokenized_corpus)
 
     if lang == 'de':
-        # Load the MBart model and tokenizer for translation
-        model_name = "facebook/mbart-large-50-many-to-many-mmt"
-        model = MBartForConditionalGeneration.from_pretrained(model_name)
-        tokenizer = MBart50TokenizerFast.from_pretrained(model_name)
-        target_lang = "en_XX"
-        queries = translate_claims_german_to_english(queries, tokenizer, model)
-
+        queries = translate_claims_german_to_english(queries)
     
     # Prepare to store results
     top_abstracts = []
