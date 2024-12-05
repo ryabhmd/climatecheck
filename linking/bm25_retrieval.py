@@ -20,7 +20,7 @@ def preprocess(text):
     tokens = [word for word in tokens if word not in string.punctuation]  # Remove punctuation
     return tokens
 
-def translate_claims_german_to_english(claims):
+def translate_claims_german_to_english(claims, tokenizer, model):
     """
     Function to translate a list of German claims to English
     """
@@ -80,7 +80,7 @@ def main():
         model = MBartForConditionalGeneration.from_pretrained(model_name)
         tokenizer = MBart50TokenizerFast.from_pretrained(model_name)
         target_lang = "en_XX"
-        queries = translate_claims_german_to_english(queries)
+        queries = translate_claims_german_to_english(queries, tokenizer, model)
 
     
     # Prepare to store results
