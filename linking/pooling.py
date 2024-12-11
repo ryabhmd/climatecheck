@@ -3,17 +3,21 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification, Auto
 import json
 import pandas as pd
 
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
+
 # Define the models and their respective types
 models_info = {
     "microsoft/deberta-v2-xxlarge-mnli": "sequence_classification",
     "joeddav/xlm-roberta-large-xnli": "sequence_classification",
     "FacebookAI/roberta-large-mnli": "sequence_classification",
+    "globuslabs/ScholarBERT": "sequence_classification",
+    "google/mt5-xxl": "seq2seq",
     "openlm-research/open_llama_13b": "causal_lm",
     "bigscience/bloom": "causal_lm",
-    "google/mt5-xxl": "seq2seq",
     "meta-llama/Llama-2-7b": "causal_lm",
-    "globuslabs/ScholarBERT": "sequence_classification",
-    "HuggingFaceTB/SmolLM-360M": "causal_lm"
+    "HuggingFaceTB/SmolLM-360M": "causal_lm",
+    "microsoft/Phi-3-mini-4k-instruct": "causal_lm",
 }
 
 # Mapping from logits indices to labels
@@ -23,6 +27,7 @@ label_mapping = {0: "Refutes", 1: "Not Enough Information", 2: "Supports"}
 def process_sequence_classification(model_name, tokenizer, model, claim, abstract):
     input_text = f"{claim} </s></s> {abstract}" if "roberta" in model_name or "xlm-roberta" in model_name else f"{claim} [SEP] {abstract}"
     inputs = tokenizer(input_text, return_tensors="pt", truncation=True, max_length=512)
+    inputs = {k: v.to(device) for k, v in inputs.items()}
     with torch.no_grad():
         outputs = model(**inputs)
         logits = outputs.logits
@@ -37,6 +42,7 @@ Abstract: "{abstract}"
 Does the abstract support, refute, or not provide enough information about the claim? Answer with "Supports", "Refutes", or "Not Enough Information".
 Answer:"""
     inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512)
+    inputs = {k: v.to(device) for k, v in inputs.items()}
     with torch.no_grad():
         outputs = model.generate(**inputs, max_length=600, temperature=0.7, top_p=0.9)
     response = tokenizer.decode(outputs[0], skip_special_tokens=True)
@@ -47,6 +53,7 @@ Answer:"""
 def process_seq2seq(model_name, tokenizer, model, claim, abstract):
     input_text = f"Claim: {claim} Abstract: {abstract} Predict the relationship: Supports, Refutes, or Not Enough Information."
     inputs = tokenizer(input_text, return_tensors="pt", truncation=True, max_length=512)
+    inputs = {k: v.to(device) for k, v in inputs.items()}
     with torch.no_grad():
         outputs = model.generate(**inputs, max_length=50, temperature=0.7, top_p=0.9)
     response = tokenizer.decode(outputs[0], skip_special_tokens=True)
@@ -70,7 +77,8 @@ def main():
             model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
         else:
             raise ValueError("Unsupported model type")
-            
+        
+        model.to(device)
         model_predictions = []
         for idx, row in data[:5].iterrows(): 
             claim = row["atomic_claim"]
