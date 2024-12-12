@@ -45,7 +45,7 @@ Answer:"""
     with torch.no_grad():
         outputs = model.generate(**inputs, max_length=600, temperature=0.7, top_p=0.9)
     response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    return response[
+    return response
 
 # Function to process seq2seq models
 def process_seq2seq(model_name, tokenizer, model, claim, abstract):
