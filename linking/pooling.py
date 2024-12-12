@@ -80,7 +80,7 @@ def main():
         model_predictions = []
         for idx, row in data.iterrows(): 
             claim = row["atomic_claim"]
-            abstracts = [item[2] for item in row['reranking_results'][:5]]
+            abstracts = [item[0] for item in row['reranking_results'][:5]]
             for abstract in abstracts:
                 if model_type == "sequence_classification":
                     pred = process_sequence_classification(model_name, tokenizer, model, claim, abstract)
