@@ -11,13 +11,12 @@ models_info = {
     "microsoft/deberta-v2-xxlarge-mnli": "sequence_classification",
     "joeddav/xlm-roberta-large-xnli": "sequence_classification",
     "FacebookAI/roberta-large-mnli": "sequence_classification",
-    "globuslabs/ScholarBERT": "sequence_classification",
-    "google/mt5-xxl": "seq2seq",
     "openlm-research/open_llama_13b": "causal_lm",
     "bigscience/bloom": "causal_lm",
     "meta-llama/Llama-2-7b": "causal_lm",
     "HuggingFaceTB/SmolLM-360M": "causal_lm",
     "microsoft/Phi-3-mini-4k-instruct": "causal_lm",
+]   "google/mt5-xxl": "seq2seq",
 }
 
 # Mapping from logits indices to labels
