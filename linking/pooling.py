@@ -36,8 +36,8 @@ def process_sequence_classification(model_name, tokenizer, model, claim, abstrac
 # Function to process causal language models
 def process_causal_lm(model_name, tokenizer, model, claim, abstract):
     prompt = f"""You are a fact-checking assistant. Verify the claim against the provided abstract:
-Claim: "{claim}"
-Abstract: "{abstract}"
+Claim: {claim}
+Abstract: {abstract}
 Does the abstract support, refute, or not provide enough information about the claim? Answer with "Supports", "Refutes", or "Not Enough Information".
 Answer:"""
     inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512)
@@ -45,8 +45,7 @@ Answer:"""
     with torch.no_grad():
         outputs = model.generate(**inputs, max_length=600, temperature=0.7, top_p=0.9)
     response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    answer_start = response.find("Answer:") + len("Answer:")
-    return response[answer_start:].strip().split("\n")[0]
+    return response[
 
 # Function to process seq2seq models
 def process_seq2seq(model_name, tokenizer, model, claim, abstract):
@@ -60,7 +59,7 @@ def process_seq2seq(model_name, tokenizer, model, claim, abstract):
 
 def main():
 
-    data = pd.read_pickle('/netscratch/abu/Shared-Tasks/ClimateCheck/data/claims/final_english_claims_reduced_bm25_v2.pkl')
+    data = pd.read_pickle('/netscratch/abu/Shared-Tasks/ClimateCheck/data/claims/pooling_test.pkl')
 
     predictions = {}
     
@@ -79,9 +78,9 @@ def main():
         
         model.to(device)
         model_predictions = []
-        for idx, row in data[:5].iterrows(): 
+        for idx, row in data.iterrows(): 
             claim = row["atomic_claim"]
-            abstracts = [item[2] for item in row['bm25_results'][:5]]
+            abstracts = [item[2] for item in row['reranking_results'][:5]]
             for abstract in abstracts:
                 if model_type == "sequence_classification":
                     pred = process_sequence_classification(model_name, tokenizer, model, claim, abstract)
