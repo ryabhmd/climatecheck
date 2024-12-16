@@ -16,7 +16,6 @@ models_info = {
     "meta-llama/Llama-2-7b-hf": "causal_lm",
     "HuggingFaceTB/SmolLM-360M": "causal_lm",
     "microsoft/Phi-3-mini-4k-instruct": "causal_lm",
-    "google/mt5-xl": "seq2seq",
 }
 
 # Mapping from logits indices to labels
@@ -43,19 +42,9 @@ Answer:"""
     inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512)
     inputs = {k: v.to(device) for k, v in inputs.items()}
     with torch.no_grad():
-        outputs = model.generate(**inputs, max_length=600, temperature=0.7, top_p=0.9)
+        outputs = model.generate(**inputs, max_new_tokens=50, temperature=0.7, top_p=0.9)
     response = tokenizer.decode(outputs[0], skip_special_tokens=True)
     return response
-
-# Function to process seq2seq models
-def process_seq2seq(model_name, tokenizer, model, claim, abstract):
-    input_text = f"Claim: {claim} Abstract: {abstract} Predict the relationship: Supports, Refutes, or Not Enough Information."
-    inputs = tokenizer(input_text, return_tensors="pt", truncation=True, max_length=512)
-    inputs = {k: v.to(device) for k, v in inputs.items()}
-    with torch.no_grad():
-        outputs = model.generate(**inputs, max_length=50, temperature=0.7, top_p=0.9)
-    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    return response.strip()
 
 def main():
 
@@ -71,8 +60,6 @@ def main():
             model = AutoModelForSequenceClassification.from_pretrained(model_name)
         elif model_type == "causal_lm":
             model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", load_in_8bit=True)
-        elif model_type == "seq2seq":
-            model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
         else:
             raise ValueError("Unsupported model type")
         
@@ -87,9 +74,6 @@ def main():
                     pred = process_sequence_classification(model_name, tokenizer, model, claim, abstract)
                 elif model_type == "causal_lm":
                     pred = process_causal_lm(model_name, tokenizer, model, claim, abstract)
-                elif model_type == "seq2seq":
-                    model.to(device)
-                    pred = process_seq2seq(model_name, tokenizer, model, claim, abstract)
                 model_predictions.append({"claim": claim, "abstract": abstract, "prediction": pred})
     
         predictions[model_name] = model_predictions
