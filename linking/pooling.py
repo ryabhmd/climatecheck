@@ -16,7 +16,7 @@ models_info = {
     "meta-llama/Llama-2-7b-hf": "causal_lm",
     "HuggingFaceTB/SmolLM-360M": "causal_lm",
     "microsoft/Phi-3-mini-4k-instruct": "causal_lm",
-    "google/mt5-xxl": "seq2seq",
+    "google/mt5-xl": "seq2seq",
 }
 
 # Mapping from logits indices to labels
