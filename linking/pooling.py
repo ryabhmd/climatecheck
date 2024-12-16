@@ -76,17 +76,19 @@ def main():
         else:
             raise ValueError("Unsupported model type")
         
-        model.to(device)
+        
         model_predictions = []
         for idx, row in data.iterrows(): 
             claim = row["atomic_claim"]
             abstracts = [item[0] for item in row['reranking_results'][:5]]
             for abstract in abstracts:
                 if model_type == "sequence_classification":
+                    model.to(device)
                     pred = process_sequence_classification(model_name, tokenizer, model, claim, abstract)
                 elif model_type == "causal_lm":
                     pred = process_causal_lm(model_name, tokenizer, model, claim, abstract)
                 elif model_type == "seq2seq":
+                    model.to(device)
                     pred = process_seq2seq(model_name, tokenizer, model, claim, abstract)
                 model_predictions.append({"claim": claim, "abstract": abstract, "prediction": pred})
     
