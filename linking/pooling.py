@@ -70,7 +70,7 @@ def main():
         if model_type == "sequence_classification":
             model = AutoModelForSequenceClassification.from_pretrained(model_name)
         elif model_type == "causal_lm":
-            model = AutoModelForCausalLM.from_pretrained(model_name)
+            model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", load_in_8bit=True)
         elif model_type == "seq2seq":
             model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
         else:
