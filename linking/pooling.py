@@ -11,11 +11,15 @@ models_info = {
     "microsoft/deberta-v2-xxlarge-mnli": "sequence_classification",
     "joeddav/xlm-roberta-large-xnli": "sequence_classification",
     "FacebookAI/roberta-large-mnli": "sequence_classification",
+    "facebook/bart-large-mnli": "sequence_classification",
     "openlm-research/open_llama_13b": "causal_lm",
     "bigscience/bloom-3b": "causal_lm",
     "meta-llama/Llama-2-7b-hf": "causal_lm",
     "HuggingFaceTB/SmolLM-360M": "causal_lm",
     "microsoft/Phi-3-mini-4k-instruct": "causal_lm",
+    "mistralai/Mixtral-8x7B-v0.1": "causal_lm",
+    "meta-llama/Llama-3.1-70B": "causal_lm",
+    "mistralai/Mixtral-8x7B-v0.1": "causal_lm"
 }
 
 # Mapping from logits indices to labels
@@ -42,7 +46,7 @@ Answer:"""
     inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512)
     inputs = {k: v.to(device) for k, v in inputs.items()}
     with torch.no_grad():
-        outputs = model.generate(**inputs, max_new_tokens=50, temperature=0.7, top_p=0.9)
+        outputs = model.generate(**inputs, max_new_tokens=10, temperature=0.7, top_p=0.9)
     response = tokenizer.decode(outputs[0], skip_special_tokens=True)
     return response
 
