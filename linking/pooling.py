@@ -12,7 +12,7 @@ models_info = {
     "joeddav/xlm-roberta-large-xnli": "sequence_classification",
     "FacebookAI/roberta-large-mnli": "sequence_classification",
     "openlm-research/open_llama_13b": "causal_lm",
-    "bigscience/bloom": "causal_lm",
+    "bigscience/bloom-3b": "causal_lm",
     "meta-llama/Llama-2-7b": "causal_lm",
     "HuggingFaceTB/SmolLM-360M": "causal_lm",
     "microsoft/Phi-3-mini-4k-instruct": "causal_lm",
