@@ -28,13 +28,13 @@ models_info = {
 # Function to process sequence classification models
 def process_sequence_classification(model_name, tokenizer, model, claim, abstract):
     inputs = tokenizer(
-                        claim,
-                        abstract,
-                        return_tensors="pt",
-                        truncation=True,
-                        padding=True,
-                        max_length=512,
-                    ).to(device)
+        claim,
+        abstract,
+        return_tensors="pt",
+        truncation=True,
+        padding=True,
+        max_length=512,
+    ).to(device)
     
     with torch.no_grad():
         outputs = model(**inputs)
@@ -92,7 +92,10 @@ def main():
                 model_predictions.append({"claim": claim, "abstract": abstract, "prediction": pred})
     
         predictions[model_name] = model_predictions
-        del model  # Free up memory
+        try:
+            del model  # Free up memory
+        except:
+            del text_gen_pipeline
     
         # Save predictions to JSON
         with open("model_predictions.json", "w") as f:
