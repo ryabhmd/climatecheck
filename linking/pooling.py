@@ -46,14 +46,12 @@ def process_sequence_classification(model_name, tokenizer, model, claim, abstrac
     return prediction
 
 # Function to process causal language models
-def process_causal_lm(model_name, claim, abstract):
+def process_causal_lm(text_gen_pipeline, claim, abstract):
     prompt = (
         f"Claim: {claim}\n"
         f"Abstract: {abstract}\n\n"
         "Does the abstract support, refute, or provide no information about the claim? "
         "Answer with one of the following words: supports, refutes, not enough info.")
-    
-    text_gen_pipeline = pipeline("text-generation", model=model_name, device=0)
     
     output = text_gen_pipeline(prompt, max_length=50, num_return_sequences=1, do_sample=True)
     
@@ -74,7 +72,7 @@ def main():
         if model_type == "sequence_classification":
             model = AutoModelForSequenceClassification.from_pretrained(model_name)
         elif model_type == "causal_lm":
-            model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", load_in_8bit=True, torch_dtype=torch.float16)
+            text_gen_pipeline = pipeline("text-generation", model=model_name, device=0)
         else:
             raise ValueError("Unsupported model type")
         
@@ -88,7 +86,7 @@ def main():
                     model.to(device)
                     pred = process_sequence_classification(model_name, tokenizer, model, claim, abstract)
                 elif model_type == "causal_lm":
-                    pred = process_causal_lm(model_name, claim, abstract)
+                    pred = process_causal_lm(text_gen_pipeline, claim, abstract)
                 model_predictions.append({"claim": claim, "abstract": abstract, "prediction": pred})
     
         predictions[model_name] = model_predictions
