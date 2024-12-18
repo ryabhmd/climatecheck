@@ -22,8 +22,7 @@ models_info = {
     #"google/gemma-2-9b-it": "causal_lm", waiting for access
     "meta-llama/Llama-3.1-8B-Instruct": "causal_lm",
     "mistralai/Mistral-Nemo-Instruct-2407": "causal_lm",
-    "intfloat/e5-mistral-7b-instruct": "causal_lm",
-    "HuggingFaceTB/SmolLM2-1.7B-Instruct": "causal_lm"
+    "HuggingFaceTB/SmolLM2-1.7B-Instruct": "causal_lm",
 }
 
 # Function to process sequence classification models
@@ -87,7 +86,7 @@ def process_causal_lm(model, tokenizer, claim, abstract):
 
     prediction = extract_prediction(response)
     
-    return prediction
+    return response, prediction
 
 def main():
 
@@ -114,9 +113,10 @@ def main():
             for abstract in abstracts:
                 if model_type == "sequence_classification":
                     pred = process_sequence_classification(model_name, tokenizer, model, claim, abstract)
+                    model_predictions.append({"claim": claim, "abstract": abstract, "prediction": pred})
                 elif model_type == "causal_lm":
-                    pred = process_causal_lm(model, tokenizer, claim, abstract)
-                model_predictions.append({"claim": claim, "abstract": abstract, "prediction": pred})
+                    response, pred = process_causal_lm(model, tokenizer, claim, abstract)
+                    model_predictions.append({"claim": claim, "abstract": abstract, "response": response, "prediction": pred})
     
         predictions[model_name] = model_predictions
         try:
