@@ -17,12 +17,12 @@ models_info = {
     "joeddav/xlm-roberta-large-xnli": "sequence_classification",
     "FacebookAI/roberta-large-mnli": "sequence_classification",
     "facebook/bart-large-mnli": "sequence_classification",
-    "Qwen/Qwen2.5-7B": "causal_lm",
-    #"google/gemma-2-9b": "causal_lm", waiting for access
+    "Qwen/Qwen2.5-7B-Instruct": "causal_lm",
+    #"google/gemma-2-9b-it": "causal_lm", waiting for access
     "meta-llama/Llama-3.1-8B": "causal_lm",
-    "mistralai/Mistral-Nemo-Base-2407": "causal_lm",
+    "mistralai/Mistral-Nemo-Instruct-2407": "causal_lm",
     "intfloat/e5-mistral-7b-instruct": "causal_lm",
-    "HuggingFaceTB/SmolLM2-1.7B": "causal_lm"
+    "HuggingFaceTB/SmolLM2-1.7B-Instruct": "causal_lm"
 }
 
 # Function to process sequence classification models
@@ -40,22 +40,25 @@ def process_sequence_classification(model_name, tokenizer, model, claim, abstrac
         outputs = model(**inputs)
         logits = outputs.logits
         
-    labels = ["contradiction", "neutral", "entailment"]
+    labels = ["refutes", "not enough information", "supports"]
     prediction = labels[torch.argmax(logits, dim=-1).item()]
 
     return prediction
 
 # Function to process causal language models
-def process_causal_lm(text_gen_pipeline, claim, abstract):
-    prompt = (
-        f"Claim: {claim}\n"
-        f"Abstract: {abstract}\n\n"
-        "Does the abstract support, refute, or provide no information about the claim? "
-        "Answer with one of the following words: supports, refutes, not enough info.")
+def process_causal_lm(model, tokenizer, claim, abstract):
+    prompt = f"""You are a claim verification assistant. Verify the claim against the provided abstract:
+            Claim: "{claim}"
+            Abstract: "{abstract}"
+            Does the abstract support, refute, or not provide enough information about the claim? Answer with "Supports", "Refutes", or "Not Enough Information". Only one answer can be chosen.
+            Return your answer in a python list format."""
     
-    output = text_gen_pipeline(prompt, max_length=50, num_return_sequences=1, do_sample=True)
+    messages = [{"role": "user", "content": prompt}]
+    input_text=tokenizer.apply_chat_template(messages, tokenize=False)
+    inputs = tokenizer.encode(input_text, return_tensors="pt").to(device)
+    outputs = model.generate(inputs, max_new_tokens=50, temperature=0.7, top_p=0.9, do_sample=True)
     
-    response = output[0]["generated_text"].lower()
+    response = tokenizer.decode(outputs[0])
     
     return response
 
@@ -70,9 +73,9 @@ def main():
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         
         if model_type == "sequence_classification":
-            model = AutoModelForSequenceClassification.from_pretrained(model_name)
+            model = AutoModelForSequenceClassification.from_pretrained(model_name).to(device)
         elif model_type == "causal_lm":
-            text_gen_pipeline = pipeline("text-generation", model=model_name, device=0)
+            model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-7B-Instruct").to(device)
         else:
             raise ValueError("Unsupported model type")
         
@@ -83,10 +86,9 @@ def main():
             abstracts = [item[0] for item in row['reranking_results'][:5]]
             for abstract in abstracts:
                 if model_type == "sequence_classification":
-                    model.to(device)
                     pred = process_sequence_classification(model_name, tokenizer, model, claim, abstract)
                 elif model_type == "causal_lm":
-                    pred = process_causal_lm(text_gen_pipeline, claim, abstract)
+                    pred = process_causal_lm(model, tokenizer, claim, abstract)
                 model_predictions.append({"claim": claim, "abstract": abstract, "prediction": pred})
     
         predictions[model_name] = model_predictions
