@@ -45,6 +45,30 @@ def process_sequence_classification(model_name, tokenizer, model, claim, abstrac
 
     return prediction
 
+def extract_prediction(text):
+    """
+    Extracts the prediction label ('supports', 'refutes', or 'not enough information') from the input text.
+
+    Args:
+        text (str): The input text containing the prediction.
+
+    Returns:
+        str: The extracted label in lowercase ('supports', 'refutes', or 'not enough information').
+             Returns 'unknown' if no valid label is found.
+    """
+    # Define a regex pattern to capture the prediction
+    pattern = r"\['(Supports|Refutes|Not Enough Information)'\]"
+    
+    # Search for the prediction in the text
+    match = re.search(pattern, text, re.IGNORECASE)
+    
+    if match:
+        # Return the matched label in lowercase
+        return match.group(1).lower()
+    else:
+        # Return 'unknown' if no match is found
+        return "unknown"
+
 # Function to process causal language models
 def process_causal_lm(model, tokenizer, claim, abstract):
     prompt = f"""You are a claim verification assistant. Verify the claim against the provided abstract:
@@ -59,8 +83,10 @@ def process_causal_lm(model, tokenizer, claim, abstract):
     outputs = model.generate(inputs, max_new_tokens=50, temperature=0.7, top_p=0.9, do_sample=True)
     
     response = tokenizer.decode(outputs[0])
+
+    prediction = extract_prediction(response)
     
-    return response
+    return prediction
 
 def main():
 
