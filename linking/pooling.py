@@ -90,7 +90,10 @@ def main():
                 model_predictions.append({"claim": claim, "abstract": abstract, "prediction": pred})
     
         predictions[model_name] = model_predictions
-        del model  # Free up memory
+        try:
+            del model  # Free up memory
+        except:
+            del text_gen_pipeline
     
         # Save predictions to JSON
         with open("model_predictions.json", "w") as f:
