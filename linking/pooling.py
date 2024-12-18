@@ -18,7 +18,7 @@ models_info = {
     "FacebookAI/roberta-large-mnli": "sequence_classification",
     "facebook/bart-large-mnli": "sequence_classification",
     "Qwen/Qwen2.5-7B": "causal_lm",
-    "google/gemma-2-9b": "causal_lm",
+    #"google/gemma-2-9b": "causal_lm", waiting for access
     "meta-llama/Llama-3.1-8B": "causal_lm",
     "mistralai/Mistral-Nemo-Base-2407": "causal_lm",
     "intfloat/e5-mistral-7b-instruct": "causal_lm",
