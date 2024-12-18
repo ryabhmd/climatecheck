@@ -1,5 +1,10 @@
 import torch
-from transformers import AutoTokenizer, AutoModelForSequenceClassification, AutoModelForCausalLM, AutoModelForSeq2SeqLM
+from transformers import (
+    AutoTokenizer, 
+    AutoModelForSequenceClassification, 
+    AutoModelForCausalLM, 
+    pipeline
+)
 import json
 import pandas as pd
 
@@ -48,12 +53,13 @@ def process_causal_lm(model_name, claim, abstract):
         "Does the abstract support, refute, or provide no information about the claim? "
         "Answer with one of the following words: supports, refutes, not enough info."
     )
-
+    
     text_gen_pipeline = pipeline("text-generation", model=model_name, device=0)
-
+    
     output = text_gen_pipeline(prompt, max_length=50, num_return_sequences=1, do_sample=True)
+    
     response = output[0]["generated_text"].lower()
-
+    
     return response
 
 def main():
