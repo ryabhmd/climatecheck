@@ -71,18 +71,30 @@ def extract_prediction(text):
 
 # Function to process causal language models
 def process_causal_lm(model, tokenizer, claim, abstract):
-    prompt = f"""You are a claim verification assistant. Verify the claim against the provided abstract:
-            Claim: "{claim}"
-            Abstract: "{abstract}"
-            Does the abstract support, refute, or not provide enough information about the claim? Answer with "Supports", "Refutes", or "Not Enough Information". Only one answer can be chosen.
-            Return your answer in a python list format."""
+    prompt = f"""You are an expert claim verification assistant.
+    Verify the claim against the provided abstract:
+    Claim: "{claim}"
+    Abstract: "{abstract}"
+    Does the abstract:
+    - Support the claim
+    - Refute the claim
+    - Not provide enough information?
+    Answer clearly with one of the following: "Supports", "Refutes", or "Not Enough Information".
+    Return your answer in a python list format."""
     
     messages = [{"role": "user", "content": prompt}]
     input_text=tokenizer.apply_chat_template(messages, tokenize=False)
     inputs = tokenizer.encode(input_text, return_tensors="pt").to(device)
-    outputs = model.generate(inputs, max_new_tokens=50, temperature=0.7, top_p=0.9, do_sample=True)
+    outputs = model.generate(
+        inputs, 
+        max_new_tokens=20, 
+        temperature=0, 
+        top_p=1, 
+        do_sample=True, 
+        eos_token_id=tokenizer.eos_token_id
+        )
     
-    response = tokenizer.decode(outputs[0])
+    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
     prediction = extract_prediction(response)
     
