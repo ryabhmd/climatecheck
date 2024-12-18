@@ -47,12 +47,11 @@ def process_sequence_classification(model_name, tokenizer, model, claim, abstrac
 
 # Function to process causal language models
 def process_causal_lm(model_name, claim, abstract):
-   prompt = (
+    prompt = (
         f"Claim: {claim}\n"
         f"Abstract: {abstract}\n\n"
         "Does the abstract support, refute, or provide no information about the claim? "
-        "Answer with one of the following words: supports, refutes, not enough info."
-    )
+        "Answer with one of the following words: supports, refutes, not enough info.")
     
     text_gen_pipeline = pipeline("text-generation", model=model_name, device=0)
     
