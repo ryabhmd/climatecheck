@@ -28,13 +28,13 @@ models_info = {
 # Function to process sequence classification models
 def process_sequence_classification(model_name, tokenizer, model, claim, abstract):
     inputs = tokenizer(
-                        claim,
-                        abstract,
-                        return_tensors="pt",
-                        truncation=True,
-                        padding=True,
-                        max_length=512,
-                    ).to(device)
+        claim,
+        abstract,
+        return_tensors="pt",
+        truncation=True,
+        padding=True,
+        max_length=512,
+    ).to(device)
     
     with torch.no_grad():
         outputs = model(**inputs)
@@ -53,7 +53,7 @@ def process_causal_lm(text_gen_pipeline, claim, abstract):
         "Does the abstract support, refute, or provide no information about the claim? "
         "Answer with one of the following words: supports, refutes, not enough info.")
     
-    output = text_gen_pipeline(prompt, max_length=50, num_return_sequences=1, do_sample=True)
+    output = text_gen_pipeline(prompt, max_new_tokens=50, num_return_sequences=1, do_sample=True)
     
     response = output[0]["generated_text"].lower()
     
