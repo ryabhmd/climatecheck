@@ -19,7 +19,7 @@ models_info = {
     "facebook/bart-large-mnli": "sequence_classification",
     "Qwen/Qwen2.5-7B-Instruct": "causal_lm",
     #"google/gemma-2-9b-it": "causal_lm", waiting for access
-    "meta-llama/Llama-3.1-8B": "causal_lm",
+    "meta-llama/Llama-3.1-8B-Instruct": "causal_lm",
     "mistralai/Mistral-Nemo-Instruct-2407": "causal_lm",
     "intfloat/e5-mistral-7b-instruct": "causal_lm",
     "HuggingFaceTB/SmolLM2-1.7B-Instruct": "causal_lm"
