@@ -12,42 +12,48 @@ models_info = {
     "joeddav/xlm-roberta-large-xnli": "sequence_classification",
     "FacebookAI/roberta-large-mnli": "sequence_classification",
     "facebook/bart-large-mnli": "sequence_classification",
-    "openlm-research/open_llama_13b": "causal_lm",
-    "bigscience/bloom-3b": "causal_lm",
-    "meta-llama/Llama-2-7b-hf": "causal_lm",
-    "HuggingFaceTB/SmolLM-360M": "causal_lm",
-    "microsoft/Phi-3-mini-4k-instruct": "causal_lm",
-    "mistralai/Mixtral-8x7B-v0.1": "causal_lm",
-    "meta-llama/Llama-3.1-70B": "causal_lm",
-    "mistralai/Mixtral-8x7B-v0.1": "causal_lm"
+    "Qwen/Qwen2.5-7B": "causal_lm",
+    "google/gemma-2-9b": "causal_lm",
+    "meta-llama/Llama-3.1-8B": "causal_lm",
+    "mistralai/Mistral-Nemo-Base-2407": "causal_lm",
+    "intfloat/e5-mistral-7b-instruct": "causal_lm",
+    "HuggingFaceTB/SmolLM2-1.7B": "causal_lm"
 }
-
-# Mapping from logits indices to labels
-label_mapping = {0: "Refutes", 1: "Not Enough Information", 2: "Supports"}
 
 # Function to process sequence classification models
 def process_sequence_classification(model_name, tokenizer, model, claim, abstract):
-    input_text = f"{claim} </s></s> {abstract}" if "roberta" in model_name or "xlm-roberta" in model_name else f"{claim} [SEP] {abstract}"
-    inputs = tokenizer(input_text, return_tensors="pt", truncation=True, max_length=512)
-    inputs = {k: v.to(device) for k, v in inputs.items()}
+    inputs = tokenizer(
+                        claim,
+                        abstract,
+                        return_tensors="pt",
+                        truncation=True,
+                        padding=True,
+                        max_length=512,
+                    ).to(device)
+    
     with torch.no_grad():
         outputs = model(**inputs)
         logits = outputs.logits
-    prediction = torch.argmax(logits, dim=1).item()
-    return label_mapping[prediction]
+        
+    labels = ["contradiction", "neutral", "entailment"]
+    prediction = labels[torch.argmax(logits, dim=-1).item()]
+
+    return prediction
 
 # Function to process causal language models
-def process_causal_lm(model_name, tokenizer, model, claim, abstract):
-    prompt = f"""You are a fact-checking assistant. Verify the claim against the provided abstract:
-Claim: {claim}
-Abstract: {abstract}
-Does the abstract support, refute, or not provide enough information about the claim? Answer with "Supports", "Refutes", or "Not Enough Information".
-Answer:"""
-    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512)
-    inputs = {k: v.to(device) for k, v in inputs.items()}
-    with torch.no_grad():
-        outputs = model.generate(**inputs, max_new_tokens=10, temperature=0.7, top_p=0.9)
-    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+def process_causal_lm(model_name, claim, abstract):
+   prompt = (
+        f"Claim: {claim}\n"
+        f"Abstract: {abstract}\n\n"
+        "Does the abstract support, refute, or provide no information about the claim? "
+        "Answer with one of the following words: supports, refutes, not enough info."
+    )
+
+    text_gen_pipeline = pipeline("text-generation", model=model_name, device=0)
+
+    output = text_gen_pipeline(prompt, max_length=50, num_return_sequences=1, do_sample=True)
+    response = output[0]["generated_text"].lower()
+
     return response
 
 def main():
@@ -63,7 +69,7 @@ def main():
         if model_type == "sequence_classification":
             model = AutoModelForSequenceClassification.from_pretrained(model_name)
         elif model_type == "causal_lm":
-            model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", load_in_8bit=True)
+            model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", load_in_8bit=True, torch_dtype=torch.float16)
         else:
             raise ValueError("Unsupported model type")
         
@@ -77,7 +83,7 @@ def main():
                     model.to(device)
                     pred = process_sequence_classification(model_name, tokenizer, model, claim, abstract)
                 elif model_type == "causal_lm":
-                    pred = process_causal_lm(model_name, tokenizer, model, claim, abstract)
+                    pred = process_causal_lm(model_name, claim, abstract)
                 model_predictions.append({"claim": claim, "abstract": abstract, "prediction": pred})
     
         predictions[model_name] = model_predictions
