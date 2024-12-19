@@ -57,11 +57,8 @@ def extract_prediction(text):
         str: The extracted label in lowercase ('supports', 'refutes', or 'not enough information').
              Returns 'unknown' if no valid label is found.
     """
-    # Define a regex pattern to capture the prediction
-    pattern = r"\['(Supports|Refutes|Not Enough Information)'\]"
-    
     # Search for the prediction in the text
-    match = re.search(pattern, text, re.IGNORECASE)
+    match = re.search(r'\[["\']?(Supports|Refutes|Not Enough Information)["\']?\]', response, re.IGNORECASE)
     
     if match:
         # Return the matched label in lowercase
