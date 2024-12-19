@@ -10,7 +10,7 @@ import pandas as pd
 import re
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-
+print(device)
 
 # Define the models and their respective types
 models_info = {
@@ -116,7 +116,7 @@ def main():
         if model_type == "sequence_classification":
             model = AutoModelForSequenceClassification.from_pretrained(model_name).to(device)
         elif model_type == "causal_lm":
-            model = AutoModelForCausalLM.from_pretrained(model_name).to(device)
+            model = AutoModelForCausalLM.from_pretrained(model_name, load_in_8bit=True, device_map="auto")
         else:
             raise ValueError("Unsupported model type")
         
