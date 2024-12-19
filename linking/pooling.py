@@ -110,13 +110,13 @@ def main():
     for model_name, model_type in models_info.items():
         
         print(f"Processing {model_name}...")
+
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
         
         if model_type == "sequence_classification":
             model = AutoModelForSequenceClassification.from_pretrained(model_name).to(device)
-            tokenizer = AutoTokenizer.from_pretrained(model_name)
         elif model_type == "causal_lm":
             model = AutoModelForCausalLM.from_pretrained(model_name).to(device)
-            tokenizer = AutoTokenizer.from_pretrained(model_name)
         else:
             raise ValueError("Unsupported model type")
         
@@ -137,7 +137,6 @@ def main():
         
         # Free up memory
         del model  
-        del tokenizer
     
         # Save predictions to JSON
         with open("model_predictions.json", "w") as f:
