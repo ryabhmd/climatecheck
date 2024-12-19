@@ -18,9 +18,9 @@ models_info = {
     "joeddav/xlm-roberta-large-xnli": "sequence_classification",
     "FacebookAI/roberta-large-mnli": "sequence_classification",
     "facebook/bart-large-mnli": "sequence_classification",
-    "Qwen/Qwen2.5-7B-Instruct": "causal_lm",
+    "Qwen/Qwen1.5-14B-Chat": "causal_lm",
     #"google/gemma-2-9b-it": "causal_lm", waiting for access
-    "meta-llama/Llama-3.1-8B-Instruct": "causal_lm",
+    "meta-llama/Llama-2-13b-chat-hf": "causal_lm",
     "mistralai/Mistral-Nemo-Instruct-2407": "causal_lm",
     "HuggingFaceTB/SmolLM2-1.7B-Instruct": "causal_lm",
 }
@@ -71,16 +71,12 @@ def extract_prediction(text):
 
 # Function to process causal language models
 def process_causal_lm(model, tokenizer, claim, abstract):
-    prompt = f"""You are an expert claim verification assistant.
-    Verify the claim against the provided abstract:
-    Claim: "{claim}"
-    Abstract: "{abstract}"
-    Does the abstract:
-    - Support the claim
-    - Refute the claim
-    - Not provide enough information?
-    Answer clearly with one of the following: "Supports", "Refutes", or "Not Enough Information".
-    Return your answer in a python list format."""
+    prompt = f"""You are an expert claim verification assistant with vast knowledge of climate change , climate science , environmental science , physics , and energy science.
+    Your task is to check if the Claim is correct according to the Evidence. Generate ’Correct’ if the Claim is correct according to the Evidence, or ’Incorrect’ if the 
+    claim is incorrect or cannot be verified. Or 'Not enough information' if you there is not enough information in the evidence to make an informed decision.
+    Evidence: {abstract}
+    Claim: {claim}
+    Let’s think step-by-step:"""
     
     messages = [{"role": "user", "content": prompt}]
     input_text=tokenizer.apply_chat_template(messages, tokenize=False)
