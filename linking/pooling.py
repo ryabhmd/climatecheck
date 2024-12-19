@@ -87,9 +87,8 @@ def process_causal_lm(model, tokenizer, claim, abstract):
     inputs = tokenizer.encode(input_text, return_tensors="pt").to(device)
     outputs = model.generate(
         inputs, 
-        max_new_tokens=20, 
-        temperature=0.1, 
-        top_p=1, 
+        max_new_tokens=50, 
+        temperature=0.7, 
         do_sample=True, 
         eos_token_id=tokenizer.eos_token_id
         )
