@@ -23,7 +23,8 @@ models_info = {
     "meta-llama/Llama-2-13b-chat-hf": "causal_lm",
     "mistralai/Mistral-Nemo-Instruct-2407": "causal_lm",
     "HuggingFaceTB/SmolLM2-1.7B-Instruct": "causal_lm",
-    "microsoft/Phi-3-mini-4k-instruct": "causal_lm"
+    "microsoft/Phi-3-mini-4k-instruct": "causal_lm",
+    "01-ai/Yi-1.5-34B-Chat": "causal_lm"
 }
 
 # Function to process sequence classification models
