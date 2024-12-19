@@ -23,6 +23,7 @@ models_info = {
     "meta-llama/Llama-2-13b-chat-hf": "causal_lm",
     "mistralai/Mistral-Nemo-Instruct-2407": "causal_lm",
     "HuggingFaceTB/SmolLM2-1.7B-Instruct": "causal_lm",
+    "microsoft/Phi-3-mini-4k-instruct": "causal_lm"
 }
 
 # Function to process sequence classification models
@@ -71,25 +72,30 @@ def extract_prediction(text):
 
 # Function to process causal language models
 def process_causal_lm(model, tokenizer, claim, abstract):
+    
     prompt = f"""You are an expert claim verification assistant with vast knowledge of climate change , climate science , environmental science , physics , and energy science.
-    Your task is to check if the Claim is correct according to the Evidence. Generate ’Correct’ if the Claim is correct according to the Evidence, or ’Incorrect’ if the 
+    Your task is to check if the Claim is correct according to the Evidence. Generate ’Supports’ if the Claim is correct according to the Evidence, or ’Refutes’ if the 
     claim is incorrect or cannot be verified. Or 'Not enough information' if you there is not enough information in the evidence to make an informed decision.
     Evidence: {abstract}
     Claim: {claim}
+    Provide the final answer in a Python list format. 
     Let’s think step-by-step:"""
+
+    pipe = pipeline(
+    "text-generation",
+    model=model,
+    tokenizer=tokenizer,
+    return_full_text=False,
+    max_new_tokens=500,
+    do_sample=False
+    )
     
-    messages = [{"role": "user", "content": prompt}]
-    input_text=tokenizer.apply_chat_template(messages, tokenize=False)
-    inputs = tokenizer.encode(input_text, return_tensors="pt").to(device)
-    outputs = model.generate(
-        inputs, 
-        max_new_tokens=50, 
-        temperature=0.7, 
-        do_sample=True, 
-        eos_token_id=tokenizer.eos_token_id
-        )
+    messages = [
+    { "role": "user", "content": prompt}
+    ]
+    output = pipe(messages)
     
-    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    response = output[0]["generated_text"]
 
     prediction = extract_prediction(response)
     
