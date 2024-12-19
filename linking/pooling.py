@@ -27,7 +27,7 @@ models_info = {
 }
 
 # Function to process sequence classification models
-def process_sequence_classification(model_name, tokenizer, model, claim, abstract):
+def process_sequence_classification(tokenizer, model, claim, abstract):
     inputs = tokenizer(
         claim,
         abstract,
@@ -71,7 +71,7 @@ def extract_prediction(text):
         return "unknown"
 
 # Function to process causal language models
-def process_causal_lm(model, tokenizer, claim, abstract):
+def process_causal_lm(tokenizer, model, claim, abstract):
     
     prompt = f"""You are an expert claim verification assistant with vast knowledge of climate change , climate science , environmental science , physics , and energy science.
     Your task is to check if the Claim is correct according to the Evidence. Generate ’Supports’ if the Claim is correct according to the Evidence, or ’Refutes’ if the 
@@ -108,13 +108,15 @@ def main():
     predictions = {}
     
     for model_name, model_type in models_info.items():
+        
         print(f"Processing {model_name}...")
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
         
         if model_type == "sequence_classification":
             model = AutoModelForSequenceClassification.from_pretrained(model_name).to(device)
+            tokenizer = AutoTokenizer.from_pretrained(model_name)
         elif model_type == "causal_lm":
-            model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-7B-Instruct").to(device)
+            model = AutoModelForCausalLM.from_pretrained(model_name).to(device)
+            tokenizer = AutoTokenizer.from_pretrained(model_name)
         else:
             raise ValueError("Unsupported model type")
         
@@ -125,17 +127,17 @@ def main():
             abstracts = [item[0] for item in row['reranking_results'][:5]]
             for abstract in abstracts:
                 if model_type == "sequence_classification":
-                    pred = process_sequence_classification(model_name, tokenizer, model, claim, abstract)
+                    pred = process_sequence_classification(tokenizer, model, claim, abstract)
                     model_predictions.append({"claim": claim, "abstract": abstract, "prediction": pred})
                 elif model_type == "causal_lm":
-                    response, pred = process_causal_lm(model, tokenizer, claim, abstract)
+                    response, pred = process_causal_lm(tokenizer, model, claim, abstract)
                     model_predictions.append({"claim": claim, "abstract": abstract, "response": response, "prediction": pred})
     
         predictions[model_name] = model_predictions
-        try:
-            del model  # Free up memory
-        except:
-            del text_gen_pipeline
+        
+        # Free up memory
+        del model  
+        del tokenizer
     
         # Save predictions to JSON
         with open("model_predictions.json", "w") as f:
