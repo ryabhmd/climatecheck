@@ -56,15 +56,20 @@ def extract_prediction(text):
              Returns 'unknown' if no valid label is found.
     """
     # Search for the prediction in the text
-    match = re.search(r'\[["\']?(Supports|Refutes|Not Enough Information)["\']?\]', response, re.IGNORECASE)
-    
+    match = re.search(r'\[(.*?)\]', response)
     if match:
-        # Return the matched label in lowercase
-        return match.group(1).lower()
-    else:
-        # Return 'unknown' if no match is found
-        return "unknown"
-
+        # Extract the content within the brackets and normalize to lowercase
+        prediction = match.group(1).strip().lower()
+        # Normalize known labels
+        if prediction in {"supports", "'supports'", "\"supports\""}:
+            return "supports"
+        elif prediction in {"refutes", "'refutes'", "\"refutes\""}:
+            return "refutes"
+        elif prediction in {"not enough information", "'not enough information'", "\"not enough information\""}:
+            return "not enough information"
+        else:
+            return prediction
+    return "unknown"
 # Function to process causal language models
 def process_causal_lm(tokenizer, model, claim, abstract):
     
