@@ -17,14 +17,11 @@ models_info = {
     "microsoft/deberta-v2-xxlarge-mnli": "sequence_classification",
     "joeddav/xlm-roberta-large-xnli": "sequence_classification",
     "FacebookAI/roberta-large-mnli": "sequence_classification",
-    "facebook/bart-large-mnli": "sequence_classification",
     "Qwen/Qwen1.5-14B-Chat": "causal_lm",
     #"google/gemma-2-9b-it": "causal_lm", waiting for access
     "meta-llama/Llama-2-13b-chat-hf": "causal_lm",
     "mistralai/Mistral-Nemo-Instruct-2407": "causal_lm",
-    "HuggingFaceTB/SmolLM2-1.7B-Instruct": "causal_lm",
-    "microsoft/Phi-3-mini-4k-instruct": "causal_lm",
-    "01-ai/Yi-1.5-34B-Chat": "causal_lm"
+    "01-ai/Yi-1.5-9B-Chat": "causal_lm"
 }
 
 # Function to process sequence classification models
