@@ -74,7 +74,7 @@ def extract_prediction(text):
 def process_causal_lm_batch(pipe, claims, abstracts):
     batch_results = []
     for claim, abstract in zip(claims, abstracts):
-        f"""You are an expert claim verification assistant with vast knowledge of climate change , climate science , environmental science , physics , and energy science.
+        prompt = f"""You are an expert claim verification assistant with vast knowledge of climate change , climate science , environmental science , physics , and energy science.
         Your task is to check if the Claim is correct according to the Evidence. Generate ’Supports’ if the Claim is correct according to the Evidence, or ’Refutes’ if the claim is incorrect or cannot be verified. Or 'Not enough information' if you there is not enough information in the evidence to make an informed decision.
         Evidence: {abstract}
         Claim: {claim}
