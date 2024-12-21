@@ -133,8 +133,10 @@ def main():
                     response, pred = process_causal_lm(tokenizer, model, claim, abstract)
                 else:
                     raise ValueError("Unsupported model type")
-                    
-                votes[pred] += 1
+                try:    
+                    votes[pred] += 1
+                except: 
+                    votes["unknown"] +=1
 
                 # Free up memory
                 del model  
