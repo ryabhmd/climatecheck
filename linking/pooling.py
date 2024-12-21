@@ -81,10 +81,17 @@ def process_causal_lm(pipe, claim, abstract):
     Provide the final answer in a Python list format. 
     Let’s think step-by-step:"""
     
-    output = pipe(prompt)
+    messages = [
+    { "role": "user", "content": prompt}
+    ]
+    output = pipe(messages)
+    
     response = output[0]["generated_text"]
+
     prediction = extract_prediction(response)
+    
     return response, prediction
+
 
 def main():
 
@@ -100,7 +107,13 @@ def main():
             models[model_name] = (tokenizer, model)
         elif model_type == "causal_lm":
             model = AutoModelForCausalLM.from_pretrained(model_name, load_in_8bit=True, device_map="auto")
-            pipe = pipeline("text-generation", model=model, tokenizer=tokenizer, device=0)
+            pipe = pipe = pipeline(
+                "text-generation",
+                model=model,
+                tokenizer=tokenizer,
+                return_full_text=False,
+                max_new_tokens=500,
+                do_sample=False)
             models[model_name] = pipe
 
     for index, row in tqdm(data.iterrows(), total=len(data)):
