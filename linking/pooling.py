@@ -131,7 +131,7 @@ def main():
             batch_original_indices = abstracts_original_indices[idx:idx+n]
 
             batch_votes = [{"supports": 0, "refutes": 0, "not enough information": 0, "unknown": 0} for _ in batch_abstracts]
-            model_idx = 0 
+            abstract_idx_in_batch = 0 
             
             for model_name, model_type in models_info.items():
                 
@@ -144,13 +144,13 @@ def main():
                     preds = [pred for _, pred in batch_results]
 
                 #the overall number of predictions per abstract should be the number of models
-                assert len(preds) == len(models_info), (
+                assert len(preds) == len(batch_abstracts), (
                     f"Unexpected predictions length: {len(preds)} for batch size: {len(batch_abstracts)}"
                 )
 
                 for pred in preds:
-                    batch_votes[model_idx][pred] += 1
-                model_idx += 1
+                    batch_votes[abstract_idx_in_batch][pred] += 1
+                abstract_idx_in_batch += 1
 
             for batch_idx, abstract_votes in enumerate(batch_votes):
                 if abstract_votes["supports"] + abstract_votes["refutes"] >= 4:
