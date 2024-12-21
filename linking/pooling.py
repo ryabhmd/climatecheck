@@ -123,13 +123,18 @@ def main():
         abstracts_original_indices = [item[0] for item in ms_marco_results]
         evidentiary_abstracts = []
 
-        for idx in range(0, len(abstracts_list), 10):  # Process abstracts in batches of 10
-            batch_claims = [claim] * len(abstracts_list[idx:idx+8])
-            batch_abstracts = abstracts_list[idx:idx+8]
+        n = 6 # number of abstracts in batch
 
-            votes = {"supports": 0, "refutes": 0, "not enough information": 0, "unknown": 0}
+        for idx in range(0, len(abstracts_list), n):  # Process abstracts in batches of n
+            batch_claims = [claim] * len(abstracts_list[idx:idx+n])
+            batch_abstracts = abstracts_list[idx:idx+n]
+            batch_original_indices = abstracts_original_indices[idx:idx+n]
+
+            batch_votes = [{"supports": 0, "refutes": 0, "not enough information": 0, "unknown": 0} for _ in batch_abstracts]
+            model_idx = 0 
             
             for model_name, model_type in models_info.items():
+                
                 if model_type == "sequence_classification":
                     tokenizer, model = models[model_name]
                     preds = process_sequence_classification_batch(tokenizer, model, batch_claims, batch_abstracts)
@@ -138,19 +143,25 @@ def main():
                     batch_results = process_causal_lm_batch(pipe, batch_claims, batch_abstracts)
                     preds = [pred for _, pred in batch_results]
 
-                for pred in preds:
-                    votes[pred] = votes.get(pred, 0) + 1
+                #the overall number of predictions per abstract should be the number of models
+                assert len(preds) == len(models_info), (
+                    f"Unexpected predictions length: {len(preds)} for batch size: {len(batch_abstracts)}"
+                )
 
-            if votes["supports"] + votes["refutes"] >= 4:
-                for idx_in_batch, abstract in enumerate(batch_abstracts):
+                for pred in preds:
+                    batch_votes[model_idx][pred] += 1
+                model_idx += 1
+
+            for batch_idx, abstract_votes in enumerate(batch_votes):
+                if abstract_votes["supports"] + abstract_votes["refutes"] >= 4:
                     evidentiary_abstracts.append({
-                        "rank": idx + idx_in_batch,
-                        "original_index": abstracts_original_indices[idx + idx_in_batch],
+                        "rank": idx + batch_idx,
+                        "original_index": batch_original_indices[batch_idx],
                         "abstract": abstract,
-                        "votes": votes
+                        "votes": abstract_votes
                     })
                     
-            if len(evidentiary_abstracts) == 3: # don't process more batches if top 3 are already found
+            if len(evidentiary_abstracts) >= 3: # don't process more batches if top 3 are already found
                 break
         
         # Sort and save top 3 abstracts
