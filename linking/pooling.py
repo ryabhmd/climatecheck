@@ -117,7 +117,7 @@ def main():
         for idx, abstract in enumerate(abstracts_list):
             rank = idx # lower index in list means higher rank from ms marco
             
-            votes = {"supports": 0, "refutes": 0, "not enough nformation": 0, "unknown": 0}
+            votes = {"supports": 0, "refutes": 0, "not enough information": 0, "unknown": 0}
             
             for model_name, model_type in models_info.items():
                 
