@@ -5,12 +5,12 @@ from transformers import (
     AutoModelForCausalLM, 
     pipeline
 )
-import json
+from tqdm import tqdm
 import pandas as pd
+import json
 import re
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-print(device)
 
 # Define the models and their respective types
 models_info = {
@@ -70,7 +70,7 @@ def extract_prediction(text):
         else:
             return prediction
     return "unknown"
-    
+
 # Function to process causal language models
 def process_causal_lm(tokenizer, model, claim, abstract):
     
@@ -104,46 +104,56 @@ def process_causal_lm(tokenizer, model, claim, abstract):
 
 def main():
 
-    data = pd.read_pickle('/netscratch/abu/Shared-Tasks/ClimateCheck/data/claims/pooling_test.pkl')
+    data = pd.read_pickle('/netscratch/abu/Shared-Tasks/ClimateCheck/data/claims/final_english_claims_reranked_msmarco.pkl')
+    results = [None] * len(data)
 
-    predictions = {}
-    
-    for model_name, model_type in models_info.items():
-        
-        print(f"Processing {model_name}...")
+    for index, row in tqdm(data.iterrows(), total=len(data)):
+        claim = row["atomic_claim"]
+        ms_marco_results = row["ms_marco_reranking"] 
+        abstracts_list = [item[2] for item in ms_marco_results]
+        abstract_indices_list = [item[0] for item in ms_marco_results]
+        evidentiary_abstracts = []
 
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        
-        if model_type == "sequence_classification":
-            model = AutoModelForSequenceClassification.from_pretrained(model_name).to(device)
-        elif model_type == "causal_lm":
-            model = AutoModelForCausalLM.from_pretrained(model_name, load_in_8bit=True, device_map="auto")
-        else:
-            raise ValueError("Unsupported model type")
-        
-        
-        model_predictions = []
-        for idx, row in data.iterrows(): 
-            claim = row["atomic_claim"]
-            abstracts = [item[0] for item in row['reranking_results'][:5]]
-            for abstract in abstracts:
+        for idx, abstract in enumerate(abstracts_list):
+            rank = idx # lower index in list means higher rank from ms marco
+            
+            votes = {"supports": 0, "refutes": 0, "not enough nformation": 0, "unknown": 0}
+            
+            for model_name, model_type in models_info.items():
+                
+                print(f"Processing {model_name}...")
+                
+                tokenizer = AutoTokenizer.from_pretrained(model_name)
+
                 if model_type == "sequence_classification":
+                    model = AutoModelForSequenceClassification.from_pretrained(model_name).to(device)
                     pred = process_sequence_classification(tokenizer, model, claim, abstract)
-                    model_predictions.append({"claim": claim, "abstract": abstract, "prediction": pred})
                 elif model_type == "causal_lm":
+                    model = AutoModelForCausalLM.from_pretrained(model_name, load_in_8bit=True, device_map="auto")
                     response, pred = process_causal_lm(tokenizer, model, claim, abstract)
-                    model_predictions.append({"claim": claim, "abstract": abstract, "response": response, "prediction": pred})
-    
-        predictions[model_name] = model_predictions
+                else:
+                    raise ValueError("Unsupported model type")
+                    
+                votes[pred] += 1
+
+                # Free up memory
+                del model  
+
+            # Check if abstract qualifies as evidentiary
+            if votes["supports"] + votes["refutes"] >= 4:
+                evidentiary_abstracts.append({"rank": rank, , "idx": idx, "abstract": abstract, "votes": votes})
+
+        # Rank top 3 abstracts by order in the list (ascending rank)
+        evidentiary_abstracts.sort(key=lambda x: x["rank"])
+        top_3_abstracts = evidentiary_abstracts[:3]
+
+        results[index] = top_3_abstracts
         
-        # Free up memory
-        del model  
-    
-        # Save predictions to JSON
-        with open("model_predictions.json", "w") as f:
-            json.dump(predictions, f, indent=4)
+        data['top_3_abstracts'] = results
         
-        print("Predictions saved to 'model_predictions.json'")
+        data.to_pickle('/netscratch/abu/Shared-Tasks/ClimateCheck/data/claims/final_english_claims_pooling.pkl')
+
+        print(f'Saved data at index: {index}...')
 
 if __name__ == "__main__":
     main()
