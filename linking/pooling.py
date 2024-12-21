@@ -149,8 +149,9 @@ def main():
                         "abstract": abstract,
                         "votes": votes
                     })
-                    if len(evidentiary_abstracts) == 3:
-                        break
+                    
+            if len(evidentiary_abstracts) == 3: # don't process more batches if top 3 are already found
+                break
         
         # Sort and save top 3 abstracts
         evidentiary_abstracts.sort(key=lambda x: x["rank"])
