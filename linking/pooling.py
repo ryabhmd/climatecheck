@@ -134,7 +134,10 @@ def main():
                     pipe = models[model_name]
                     _, pred = process_causal_lm(pipe, claim, abstract)
                 
-                votes[pred] += 1
+                try:
+                    votes[pred] += 1
+                except:
+                    votes["unknown"] += 1
                 
             if votes["supports"] + votes["refutes"] >= 4:
                     evidentiary_abstracts.append({"rank": idx, "original_index": abstracts_original_indices[idx], "abstract": abstract, "votes": votes})
