@@ -155,7 +155,7 @@ def main():
                     evidentiary_abstracts.append({
                         "rank": idx + batch_idx,
                         "original_index": batch_original_indices[batch_idx],
-                        "abstract": abstract,
+                        "abstract": batch_abstracts[batch_idx],
                         "votes": abstract_votes
                     })
                     
