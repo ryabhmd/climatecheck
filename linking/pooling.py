@@ -131,7 +131,6 @@ def main():
             batch_original_indices = abstracts_original_indices[idx:idx+n]
 
             batch_votes = [{"supports": 0, "refutes": 0, "not enough information": 0, "unknown": 0} for _ in batch_abstracts]
-            abstract_idx_in_batch = 0 
             
             for model_name, model_type in models_info.items():
                 
@@ -148,10 +147,9 @@ def main():
                     f"Unexpected predictions length: {len(preds)} for batch size: {len(batch_abstracts)}"
                 )
 
-                for pred in preds:
-                    batch_votes[abstract_idx_in_batch][pred] += 1
-                abstract_idx_in_batch += 1
-
+                for pred_idx, pred in enumerate(preds):
+                    batch_votes[pred_idx][pred] += 1
+            
             for batch_idx, abstract_votes in enumerate(batch_votes):
                 if abstract_votes["supports"] + abstract_votes["refutes"] >= 4:
                     evidentiary_abstracts.append({
