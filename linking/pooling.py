@@ -56,7 +56,7 @@ def extract_prediction(text):
              Returns 'unknown' if no valid label is found.
     """
     # Search for the prediction in the text
-    match = re.search(r'\[(.*?)\]', response)
+    match = re.search(r'\[(.*?)\]', text)
     if match:
         # Extract the content within the brackets and normalize to lowercase
         prediction = match.group(1).strip().lower()
@@ -70,6 +70,7 @@ def extract_prediction(text):
         else:
             return prediction
     return "unknown"
+    
 # Function to process causal language models
 def process_causal_lm(tokenizer, model, claim, abstract):
     
