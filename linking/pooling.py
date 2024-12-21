@@ -26,25 +26,24 @@ models_info = {
 }
 
 # Function to process sequence classification models
-def process_sequence_classification(tokenizer, model, claim, abstract):
+def process_sequence_classification_batch(tokenizer, model, claims, abstracts):
     inputs = tokenizer(
-        claim,
-        abstract,
+        claims,
+        abstracts,
         return_tensors="pt",
         truncation=True,
         padding=True,
         max_length=512,
     ).to(device)
-    
+
     with torch.no_grad():
         outputs = model(**inputs)
         logits = outputs.logits
-        
+
     labels = ["refutes", "not enough information", "supports"]
-    prediction = labels[torch.argmax(logits, dim=-1).item()]
-
-    return prediction
-
+    predictions = [labels[torch.argmax(logit).item()] for logit in logits]
+    return predictions
+    
 def extract_prediction(text):
     """
     Extracts the prediction label ('supports', 'refutes', or 'not enough information') from the input text.
@@ -72,26 +71,27 @@ def extract_prediction(text):
             return prediction
     return "unknown"
 
-def process_causal_lm(pipe, claim, abstract):
-    prompt = f"""You are an expert claim verification assistant with vast knowledge of climate change , climate science , environmental science , physics , and energy science.
-    Your task is to check if the Claim is correct according to the Evidence. Generate ’Supports’ if the Claim is correct according to the Evidence, or ’Refutes’ if the 
-    claim is incorrect or cannot be verified. Or 'Not enough information' if you there is not enough information in the evidence to make an informed decision.
-    Evidence: {abstract}
-    Claim: {claim}
-    Provide the final answer in a Python list format. 
-    Let’s think step-by-step:"""
-    
-    messages = [
-    { "role": "user", "content": prompt}
-    ]
-    output = pipe(messages)
-    
-    response = output[0]["generated_text"]
+def process_causal_lm_batch(pipe, claims, abstracts):
+    batch_results = []
+    for claim, abstract in zip(claims, abstracts):
+        f"""You are an expert claim verification assistant with vast knowledge of climate change , climate science , environmental science , physics , and energy science.
+        Your task is to check if the Claim is correct according to the Evidence. Generate ’Supports’ if the Claim is correct according to the Evidence, or ’Refutes’ if the claim is incorrect or cannot be verified. Or 'Not enough information' if you there is not enough information in the evidence to make an informed decision.
+        Evidence: {abstract}
+        Claim: {claim}
+        Provide the final answer in a Python list format. 
+        Let’s think step-by-step:"""
 
-    prediction = extract_prediction(response)
-    
-    return response, prediction
-
+        messages = [
+            { "role": "user", "content": prompt}
+        ]
+        
+        response = pipe(messages)[0]["generated_text"]
+        
+        prediction = extract_prediction(response)
+        
+        batch_results.append((response, prediction))
+        
+    return batch_results
 
 def main():
 
@@ -118,31 +118,39 @@ def main():
 
     for index, row in tqdm(data.iterrows(), total=len(data)):
         claim = row["atomic_claim"]
-        ms_marco_results = row["ms_marco_reranking"] 
+        ms_marco_results = row["ms_marco_reranking"]
         abstracts_list = [item[2] for item in ms_marco_results]
         abstracts_original_indices = [item[0] for item in ms_marco_results]
         evidentiary_abstracts = []
 
-        for idx, abstract in enumerate(abstracts_list):
+        for idx in range(0, len(abstracts_list), 10):  # Process abstracts in batches of 10
+            batch_claims = [claim] * len(abstracts_list[idx:idx+8])
+            batch_abstracts = abstracts_list[idx:idx+8]
+
             votes = {"supports": 0, "refutes": 0, "not enough information": 0, "unknown": 0}
             
             for model_name, model_type in models_info.items():
                 if model_type == "sequence_classification":
                     tokenizer, model = models[model_name]
-                    pred = process_sequence_classification(tokenizer, model, claim, abstract)
+                    preds = process_sequence_classification_batch(tokenizer, model, batch_claims, batch_abstracts)
                 elif model_type == "causal_lm":
                     pipe = models[model_name]
-                    _, pred = process_causal_lm(pipe, claim, abstract)
-                
-                try:
-                    votes[pred] += 1
-                except:
-                    votes["unknown"] += 1
-                
+                    batch_results = process_causal_lm_batch(pipe, batch_claims, batch_abstracts)
+                    preds = [pred for _, pred in batch_results]
+
+                for pred in preds:
+                    votes[pred] = votes.get(pred, 0) + 1
+
             if votes["supports"] + votes["refutes"] >= 4:
-                    evidentiary_abstracts.append({"rank": idx, "original_index": abstracts_original_indices[idx], "abstract": abstract, "votes": votes})
+                for idx_in_batch, abstract in enumerate(batch_abstracts):
+                    evidentiary_abstracts.append({
+                        "rank": idx + idx_in_batch,
+                        "original_index": abstracts_original_indices[idx + idx_in_batch],
+                        "abstract": abstract,
+                        "votes": votes
+                    })
                     if len(evidentiary_abstracts) == 3:
-                        break  # Stop processing more abstracts once top 3 are found
+                        break
         
         # Sort and save top 3 abstracts
         evidentiary_abstracts.sort(key=lambda x: x["rank"])
@@ -152,8 +160,6 @@ def main():
             pickle.dump(results, f)
         print(f'Saved results at index: {index}...')
         
-
-
     data["top_3_abstracts"] = results
     data.to_pickle('/netscratch/abu/Shared-Tasks/ClimateCheck/data/claims/final_english_claims_pooling.pkl')
     print('Processing complete.')
