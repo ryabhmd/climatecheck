@@ -141,7 +141,7 @@ def main():
 
             # Check if abstract qualifies as evidentiary
             if votes["supports"] + votes["refutes"] >= 4:
-                evidentiary_abstracts.append({"rank": rank, , "idx": idx, "abstract": abstract, "votes": votes})
+                evidentiary_abstracts.append({"rank": rank, "idx": idx, "abstract": abstract, "votes": votes})
 
         # Rank top 3 abstracts by order in the list (ascending rank)
         evidentiary_abstracts.sort(key=lambda x: x["rank"])
