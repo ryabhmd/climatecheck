@@ -67,8 +67,6 @@ def extract_prediction(text):
             return "refutes"
         elif prediction in {"not enough information", "'not enough information'", "\"not enough information\""}:
             return "not enough information"
-        else:
-            return prediction
     return "unknown"
 
 def process_causal_lm_batch(pipe, claims, abstracts):
