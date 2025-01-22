@@ -1,5 +1,4 @@
-[
-  {
+{
     "FacebookAI/roberta-large-mnli": "sequence_classification",
     "microsoft/deberta-v2-xxlarge-mnli": "sequence_classification",
     "joeddav/xlm-roberta-large-xnli": "sequence_classification",
@@ -7,4 +6,4 @@
     "Qwen/Qwen1.5-14B-Chat": "causal_lm",
     "meta-llama/Llama-3.1-8B-Instruct": "causal_lm"
 }
-]
+
