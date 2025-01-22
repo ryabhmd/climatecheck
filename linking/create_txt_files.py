@@ -2,6 +2,8 @@ import json
 from tqdm import tqdm
 import pandas as pd
 import numpy as np
+import argparse
+
 
 def get_abstract_metadata(parquet_file, abs_original_index: str, pub_path: str):
     """
@@ -28,11 +30,39 @@ def get_abstract_metadata(parquet_file, abs_original_index: str, pub_path: str):
 
 def main():
 
+	parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
+	
+	parser.add_argument(
+        "--annotation_data_path",
+        type=str,
+        help="Path for loading the final annotation data.",)
+
+	parser.add_argument(
+        "--publication_data_path",
+        type=str,
+        help="Path for loading publication data path for loading additional metadata.",)
+
+	parser.add_argument(
+        "--txt_output_path",
+        type=str,
+        help="Path for a directory to save .txt files.",)
+
+	parser.add_argument(
+        "--df_output_path",
+        type=str,
+        help="Path for saving a pickle file of the annotation dataframe.",)
+
+	args = parser.parse_args()
+	
+	annotation_data_path = args.annotation_data_path
+	publication_data_path = args.publication_data_path
+	txt_output_path = args.txt_output_path
+	df_output_path = args.df_output_path
+
 	"""
 	Load annotation data.
 	"""
-	input_path = "/netscratch/abu/Shared-Tasks/ClimateCheck/data/annotation_data/annotation_data.json"
-	with open(input_path, 'r') as f:
+	with open(annotation_data_path, 'r') as f:
 		annotation_data = json.load(f)
 
 	"""
@@ -72,9 +102,7 @@ def main():
 
 	"""
 	Load original abstracts data to add more info: title + authors + DOI. 
-	"""
-	publication_data_path = "/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/merged_publications_only_en_citations_v2.parquet"
-	
+	"""	
 	# Load the Parquet file
 	parquet_file = pd.read_parquet(publication_data_path, engine="pyarrow")
 
@@ -97,8 +125,6 @@ def main():
 	"""
 	Dump .txt files.
 	"""
-	txt_output_path = "/netscratch/abu/Shared-Tasks/ClimateCheck/data/annotation_data/annotation_txt_files"
-
 	for idx, row in tqdm(claim_abstract_pairs.iterrows(), desc='Creating text files'):
 		pair_id = row['pair_id']
 		claim = row['claim']
@@ -114,7 +140,7 @@ def main():
 			f.write(f'URL: {abs_url}' + '\n\n\n')
 			f.write(f'DOI: {abs_doi}' + '\n\n\n')
 
-	claim_abstract_pairs.to_pickle('/netscratch/abu/Shared-Tasks/ClimateCheck/data/annotation_data/annotation_dataframe.pkl')
+	claim_abstract_pairs.to_pickle(df_output_path)
 
 if __name__ == "__main__":
 	main()
