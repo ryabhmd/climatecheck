@@ -13,21 +13,16 @@ import re
 import pickle
 import argparse
 import os
+import json
 
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
-# Define the models and their respective types
-models_info = {
-    "FacebookAI/roberta-large-mnli": "sequence_classification",
-    "microsoft/deberta-v2-xxlarge-mnli": "sequence_classification",
-    "joeddav/xlm-roberta-large-xnli": "sequence_classification",
-    "01-ai/Yi-1.5-9B-Chat-16K": "causal_lm",
-    "Qwen/Qwen1.5-14B-Chat": "causal_lm",
-    "meta-llama/Llama-3.1-8B-Instruct": "causal_lm",
-}
-
-def get_previous_model(model_name):
+# Read models info
+with open('pooling_models.json', 'r') as f:
+    models_info = json.load(f)
+    
+def get_previous_model(model_name: str) -> str:
   """
   Given a model name, returns the previous model in the list.
   If the given model is the first in the list, returns None.
@@ -51,8 +46,17 @@ def get_previous_model(model_name):
     # Handle the case where the given model_name is not in the list
     return None
 
-
 def process_sequence_classification(tokenizer, model, data):
+    """
+    Processes a sequence classification model and returns its predictions.
+    Inputs:
+    - tokenizer: an AutoTokenizer object.
+    - model: an AutoModelForSequenceClassification object.
+    - data: HF Dataset which includes the features: 'claim' and 'abstract'.
+
+    Output:
+    - predictions: a list of the model's predicted label for each claim-abstract pair in the given data.
+    """
 
   predictions = []
   labels = ["refutes", "not enough information", "supports"]
@@ -66,7 +70,7 @@ def process_sequence_classification(tokenizer, model, data):
         truncation=True,
         padding=True,
         max_length=512,
-    ).to('cuda')
+    ).to(device)
     
     # Perform inference with the model
     with torch.no_grad():
@@ -81,6 +85,7 @@ def process_sequence_classification(tokenizer, model, data):
 def extract_prediction(text):
     """
     Extracts the prediction label ('supports', 'refutes', or 'not enough information') from the input text.
+    Used to get the prediction of the text returned by causal models. 
 
     Args:
         text (str): The input text containing the prediction.
@@ -103,9 +108,20 @@ def extract_prediction(text):
             return "not enough information"
     return "unknown"
 
-def process_causal_lm(tokenizer, model, data, model_name, batch_size=16):
+def process_causal_lm(tokenizer, model, data, model_name, batch_size=16, output_data_path):
+    """
+    Processes Causal LMs by prompting them with the given claim-abstract pairs.
+    Inputes:
+    - tokenizer: an AutoTokenizer object.
+    - model: an AutoModelForCausalLM object.
+    - data: HF Dataset which includes the features: 'claim' and 'abstract'.
+    - model_name: the cleaned model name for the purposes of saving intermediate results of batches as the model processes the inputs.
+    - batch_size: batch size to be processes by the model. Default is 16.
+    - output_data_path: path to save both predictions as batched when the model is running + a final pickle file of the data with predictions.
+    """
     
     predictions = []
+    
     all_prompts = [f"""You are an expert claim verification assistant with vast knowledge of climate change , climate science , environmental science , physics , and energy science.
     Your task is to check if the Claim is correct according to the Evidence. Generate ’Supports’ if the Claim is correct according to the Evidence, or ’Refutes’ if the
     claim is incorrect or cannot be verified. Or 'Not enough information' if you there is not enough information in the evidence to make an informed decision.
@@ -116,8 +132,11 @@ def process_causal_lm(tokenizer, model, data, model_name, batch_size=16):
 
     all_messages = [[{"role": "user", "content": prompt}] for prompt in all_prompts]
 
-    tokenizer.pad_token_id = model.config.eos_token_id[0]
-
+    if "llama" in model_name.lower():
+        tokenizer.pad_token_id = model.config.eos_token_id[0]
+    else:
+        tokenizer.pad_token_id = model.config.eos_token_id
+    
     pipe = pipeline(
         "text-generation",
         model=model,
@@ -130,7 +149,7 @@ def process_causal_lm(tokenizer, model, data, model_name, batch_size=16):
     )
 
     # Make dir to save predictions to while the model is running
-    os.makedirs(f"/netscratch/abu/Shared-Tasks/ClimateCheck/data/claims/predictions_intermediate_results/{model_name}_10-20", exist_ok=True)
+    os.makedirs(f"{output_data_path}/{model_name}", exist_ok=True)
 
     predictions = []
     for i in tqdm(range(0, len(all_messages), batch_size)):
@@ -138,17 +157,34 @@ def process_causal_lm(tokenizer, model, data, model_name, batch_size=16):
         batch_predictions = [extract_prediction(item[0]["generated_text"]) for item in outputs]
         predictions.extend(batch_predictions)
         # Save predictions list as pickle
-        with open(f'/netscratch/abu/Shared-Tasks/ClimateCheck/data/claims/predictions_intermediate_results/{model_name}_10-20/{model_name}_batch_{i}.pkl', 'wb') as file: 
+        with open(f'{output_data_path}/{model_name}/{model_name}_batch_{i}.pkl', 'wb') as file: 
             pickle.dump(batch_predictions, file)
         torch.cuda.empty_cache()  # Clear cached memory
         torch.cuda.ipc_collect()  # Reduce fragmentation
-        with open(f'/netscratch/abu/Shared-Tasks/ClimateCheck/data/claims/predictions_intermediate_results/{model_name}_all_batches_10-20.pkl', 'wb') as file: 
+        with open(f'{output_data_path}/{model_name}_all_batches.pkl', 'wb') as file: 
             pickle.dump(predictions, file)
 
-    print(f"All predction batches saved in /netscratch/abu/Shared-Tasks/ClimateCheck/data/claims/predictions_intermediate_results/{model_name}_10-20.")
+    print(f"All predction batches saved in {output_data_path}/{model_name}.")
     return predictions
 
-def process_with_model(data, model_name, model_type):
+def process_with_model(data, 
+                       model_name, 
+                       model_type, 
+                       evidentiary_threshold=3, 
+                       abstracts_threshold=3,
+                       output_data_path):
+    """
+    Given a model name and type, this function processes 
+    Inputs:
+    - data: HF Dataset which includes the features: 'claim' and 'abstract'.
+    - model_name: the name of the model to be processed (as written on HF).
+    - model_type: either "sequence_classification" or "causal_lm".
+    - evidentiary_threshold: the threshold of needed evidentiary predictions for each claim-abstract pair. This is used in order to not process a pair further if it already meets the threshold in order
+    to save compute resources and time. Use case example: using 6 models for pooling, 3 evidentiary predictions are needed to inlclude a claim-abstract pair in the annotation data.
+    - abstracts_threshold: the number of abstracts we want each claim to be connected to. If a claim reaches this threshold (e.g. already has 3 connected abstracts), it is not processed further to save
+    compute resources and time.
+    - output_data_path: path to save the intermediate + final data.
+    """
 
     print(f"Processing with model: {model_name}")
 
@@ -158,10 +194,11 @@ def process_with_model(data, model_name, model_type):
         model = AutoModelForSequenceClassification.from_pretrained(model_name).to(device)
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         predictions = process_sequence_classification(tokenizer, model, data)
+        
     elif model_type == "causal_lm":
         model = AutoModelForCausalLM.from_pretrained(model_name, load_in_8bit=True, device_map="auto")
         tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side='left')
-        predictions = process_causal_lm(tokenizer, model, data, cleaned_model_name)
+        predictions = process_causal_lm(tokenizer, model, data, cleaned_model_name, output_data_path)
 
     # Free up memory by deleting model
     del model
@@ -181,37 +218,39 @@ def process_with_model(data, model_name, model_type):
     data = data.remove_columns("total_votes")
     data = data.add_column("total_votes", votes_all_rows)
 
-    # Remove rows with 4 evidentiary abstracts from the working dataset
+    # Remove rows with "evidentiary_threshold" evidentiary abstracts from the working dataset
     annotation_dataset = []
     remaining_data = []
 
     for row in tqdm(data, desc="Filtering evidentiary abstracts"):
-        # Check if 4 or more evidentiary abstracts exist
+        # Count how many evidentiaty predictions exist for each claim-abstract; split the data to "annotation_data" which contains claims that already have the 
+        # required number of abstract and "remaining_data" which will be processed further.
+        
         evidentiary_count = row["total_votes"]["supports"] + row["total_votes"]["refutes"]
-        if evidentiary_count >= 3:
+        if evidentiary_count >= evidentiary_threshold:
             annotation_dataset.append(row)
         else:
             remaining_data.append(row)
 
-    # Check if 3 rows already exist with the same claim in the final dataset to remove it completely
+    # Check if "abstracts_threshold" rows already exist with the same claim in the final dataset to remove it completely
     remaining_data_filtered = []
     annotation_data_claims = [row['claim'] for row in annotation_dataset]
     annotation_data_claim_counts = Counter(annotation_data_claims)
 
     for row in tqdm(remaining_data, desc="Filtering by claim limit"):
         claim = row["claim"]
-        if annotation_data_claim_counts[claim] < 3:
+        if annotation_data_claim_counts[claim] < abstracts_threshold:
             remaining_data_filtered.append(row)
 
     # Save intermediate dataset -> this is the remaining data which will be passed on to the next model
     remaining_data_filtered = Dataset.from_list(remaining_data_filtered)
-    remaining_data_filtered.save_to_disk(f"/netscratch/abu/Shared-Tasks/ClimateCheck/data/claims/pooling_results/intermediate_data_{cleaned_model_name}_top10-20.hf")
+    remaining_data_filtered.save_to_disk(f"{output_data_path}/intermediate_data_{cleaned_model_name}.hf")
 
-    # Save the final dataset with filtered rows -> this is the dataset that we already know will be part of the annotations
+    # Save the final dataset with filtered rows -> this is the dataset that we already know will be part of the annotatation corpus
     # After each model, an annotations data will be save, then we will stick them all together and make sure every claim has only the top 3 abstracts
     annotation_dataset = Dataset.from_list(annotation_dataset)
     if len(annotation_dataset) > 0:
-        annotation_dataset.save_to_disk(f"/netscratch/abu/Shared-Tasks/ClimateCheck/data/claims/pooling_results/annotation_data_{cleaned_model_name}_top10-20.hf")
+        annotation_dataset.save_to_disk(f"{output_data_path}/annotation_data_{cleaned_model_name}.hf")
 
     print(f"Finished processing with model: {model_name}")
     return remaining_data_filtered
@@ -236,20 +275,63 @@ if __name__ == "__main__":
         help="Model type: either 'sequence_classification' or 'causal_lm'."
     )
 
+    parser.add_argument(
+        "--input_path",
+        "-t",
+        type=str,
+        help="Path for reading the data."
+    )
+
+     parser.add_argument(
+        "--output_path",
+        "-t",
+        type=str,
+        help="Path for saving the data."
+    )
+
+    parser.add_argument(
+        "--batch_size",
+        "-t",
+        type=str,
+        default=16,
+        help="Desired batch size to be processed by models, default is 16."
+    )
+
+    parser.add_argument(
+        "--abstracts_threshold",
+        "-t",
+        type=str,
+        default=3,
+        help="The threshold of how many abstracts are required to be connected to each claim, default is 3."
+    )
+
+    parser.add_argument(
+        "--evidentiary_threshold",
+        "-t",
+        type=str,
+        default=3,
+        help="The threshold of how many evidentiary predictions are needed to add a claim-abstract pair to the annotation data, default is 3."
+    )
+
     args = parser.parse_args()
 
     model_name = args.model_name
     model_type = args.model_type
+    input_path = args.input_path
+    output_path = args.output_path
+    batch_size = args.batch_size
+    abstracts_threshold = args.abstracts_threshold
+    evidentiary_threshold = args.evidentiary_threshold
 
     previous_model = get_previous_model(model_name)
 
     if previous_model:
         # Load data left after finishing run on previous model
         previous_model = previous_model.split("/")[-1]
-        data = load_from_disk(f"/netscratch/abu/Shared-Tasks/ClimateCheck/data/claims/pooling_results/intermediate_data_{previous_model}_top10-20.hf")
+        data = load_from_disk(f"{output_path}/intermediate_data_{previous_model}.hf")
     else:
-        data = load_from_disk("/netscratch/abu/Shared-Tasks/ClimateCheck/data/claims/final_english_claims_expanded_masmarco_top10-20.hf")
+        data = load_from_disk(input_path)
 
-    remaining_data_filtered = process_with_model(data, model_name, model_type)
+    remaining_data_filtered = process_with_model(data, model_name, model_type, evidentiary_threshold, abstracts_threshold, output_path)
 
     print("Processing complete.")
