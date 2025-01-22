@@ -2,23 +2,19 @@ from datasets import load_from_disk, concatenate_datasets, Dataset
 import pandas as pd
 from tqdm import tqdm
 import json
+import argparse
 
 
-models_info = {
-    "FacebookAI/roberta-large-mnli": "sequence_classification",
-    "microsoft/deberta-v2-xxlarge-mnli": "sequence_classification",
-    "joeddav/xlm-roberta-large-xnli": "sequence_classification",
-    "01-ai/Yi-1.5-9B-Chat-16K": "causal_lm",
-    "Qwen/Qwen1.5-14B-Chat": "causal_lm",
-    "meta-llama/Llama-3.1-8B-Instruct": "causal_lm",
-}
+# Read models info
+with open('pooling_models.json', 'r') as f:
+    models_info = json.load(f)
 
 def load_datasets(path):
 	"""
 	Loads results of pooling and creates a dataframe of all results. 
-
 	"""
 	concatenated_datasets = Dataset.from_dict({})
+	
 	for model, _ in tqdm(models_info.items(), desc='Collecting data from models'):
 		clean_name = model.split("/")[-1]
 		try:
@@ -40,7 +36,7 @@ def load_datasets(path):
 			print(f'{clean_name} top 10-20 was not found. Initiated empty dataset.')
 
 		concatenated_datasets = concatenate_datasets([concatenated_datasets,
-							data_top6,
+							      data_top6,
                             data_top6_10,
                             data_top10_20])
 
@@ -54,6 +50,7 @@ def correct_ranks(annotation_data, original_msmarco_path):
 	Correct the msmarco rank for each abstract according to the original data (a .pkl file with the original rankings).
 	This function was added due to an error in the pooling code which did not correctly save the msmarco rankings.
 	It returns the annotation data with the correct rankings.  
+ 	The function also adds the claimIDs.
 	"""
 	original_data = pd.read_pickle(original_msmarco_path)
 
@@ -76,7 +73,6 @@ def correct_ranks(annotation_data, original_msmarco_path):
 def create_annotation_data(concatenated_dataframe):
 	"""
 	Gets the dataframe of pooling results as input and creates a new dataframe with annotation data. 
-
 	"""
 	all_claims = concatenated_dataframe['claim'].unique()
 
@@ -102,15 +98,41 @@ def create_annotation_data(concatenated_dataframe):
 
 def main():
 
-	output_path = "/netscratch/abu/Shared-Tasks/ClimateCheck/data/annotation_data"
+	parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
 
-	data = load_datasets("/netscratch/abu/Shared-Tasks/ClimateCheck/data/claims/pooling_results")
+	parser.add_argument(
+        "--pooling_path",
+        "-m",
+        type=str,
+        help="Path to directory where pooling results are saved.",
+	)
+
+	parser.add_argument(
+        "--output_path",
+        "-m",
+        type=str,
+        help="Path to save the annotation data.",
+	)
+
+	parser.add_argument(
+        "--top_n",
+        "-m",
+        type=str,
+	default=5,
+        help="Name of model on HF.",
+	)
+
+	args = parser.parse_args()
+	pooling_path = args.pooling_path
+	output_path = args.output_path
+	top_n = args.top_n
+	
+	data = load_datasets(pooling_path)
 	annotation_data = create_annotation_data(data)
 
-	n = 5
-	# Get top n linked abstract for each claim
+	# Get top_n linked abstract for each claim
 	for item in annotation_data:
-		item['linked_abstracts'] = sorted(item['linked_abstracts'], key=lambda x: x['msmarco_rank'])[:n]
+		item['linked_abstracts'] = sorted(item['linked_abstracts'], key=lambda x: x['msmarco_rank'])[:top_n]
 
 	print(f'Created annotation data with {len(annotation_data)} claims.')
 
@@ -122,15 +144,15 @@ def main():
 	# Count how many claims have less than n abstracts
 	claims_with_less_than_n_abstracts = []
 	for item in annotation_data:
-		if len(item['linked_abstracts']) < n:
+		if len(item['linked_abstracts']) < top_n:
 			claims_with_less_than_n_abstracts.append(item)
 
 	print(f'{len(claims_with_less_than_n_abstracts)} claims have less than n abstracts.')
 
-	with open(output_path + '/claims_with_less_than_{n}_abstracts.json', 'w') as f:
+	with open(output_path + '/claims_with_less_than_n_abstracts.json', 'w') as f:
 		json.dump(claims_with_less_than_n_abstracts, f, indent=4)
 
-	print(f'Saved claims with less than {n} abstracts at {output_path}/claims_with_less_than_{n}_abstracts.json.')
+	print(f'Saved claims with less than {n} abstracts at {output_path}/claims_with_less_than_n_abstracts.json.')
 
 
 if __name__ == "__main__":
