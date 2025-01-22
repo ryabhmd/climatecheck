@@ -5,6 +5,6 @@
     "joeddav/xlm-roberta-large-xnli": "sequence_classification",
     "01-ai/Yi-1.5-9B-Chat-16K": "causal_lm",
     "Qwen/Qwen1.5-14B-Chat": "causal_lm",
-    "meta-llama/Llama-3.1-8B-Instruct": "causal_lm",
+    "meta-llama/Llama-3.1-8B-Instruct": "causal_lm"
 }
 ]
