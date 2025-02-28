@@ -75,9 +75,9 @@ def main():
         'citationCount': citationCounts
         })
         
-    s2orc_publications.to_pickle('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/s2orc_publications_v3_citations.pkl')
+    s2orc_publications.to_pickle('.../s2orc_publications_v3_citations.pkl')
 
-    with open('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/s2orc_errors.pkl', 'wb') as f:
+    with open('.../s2orc_errors.pkl', 'wb') as f:
         pickle.dump(errors, f)
 
 
