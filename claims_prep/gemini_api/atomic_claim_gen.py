@@ -1,7 +1,6 @@
 import re
 import ast
 import argparse
-from claims_prep.german_claims.klimawandel_reddit_data import translate_keywords_to_german
 
 """
 Script to go over claims and extract a list of atomic claims 
