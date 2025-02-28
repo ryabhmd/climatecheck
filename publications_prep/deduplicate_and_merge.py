@@ -145,10 +145,10 @@ def filter_non_en(merged_df):
 
 def main():
 
-	s2orc_publications = pd.read_pickle('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/s2orc_publications_v3_citations.pkl')
+	s2orc_publications = pd.read_pickle('.../s2orc_publications_v3_citations.pkl')
 	s2orc_publications['doi'] = 'https://doi.org/' + s2orc_publications['doi']
 
-	open_alex_publlications = pd.read_pickle('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/combined_climate_works_filtered.pkl')
+	open_alex_publlications = pd.read_pickle('.../combined_climate_works_filtered.pkl')
 	
 	print(f'Number of S2ORC publications: {len(s2orc_publications)}.')
 	print(f'Number of OpenAlex publications: {len(open_alex_publlications)}.')
@@ -156,21 +156,21 @@ def main():
 	s2orc_publications_deduped = s2orc_publications[~s2orc_publications['doi'].isin(open_alex_publlications['doi'])]
 	print(f'Number of S2ORC publications after deduplication: {len(s2orc_publications_deduped)}.')
 
-	s2orc_publications_deduped.to_pickle('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/s2orc_publications_v3_citations_deduplicated.pkl')
+	s2orc_publications_deduped.to_pickle('.../s2orc_publications_v3_citations_deduplicated.pkl')
 
 	merged_df = merge(open_alex_publlications, s2orc_publications_deduped)
-	merged_df.to_parquet('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/merged_publications_v2.parquet')
+	merged_df.to_parquet('.../merged_publications_v2.parquet')
 	print(f'Number of merged publications: {len(merged_df)}.')
 
 	# drop non EN rows (titles or abstracts)
 	filtered_df = filter_non_en(merged_df)
-	filtered_df.to_parquet('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/merged_publications_only_en_v2.parquet')
+	filtered_df.to_parquet('.../merged_publications_only_en_v2.parquet')
 	print(f'Number of merged publications after removing non English ones: {len(filtered_df)}.')
 	
 	# drop rows with less than 10 citations
-	filtered_df = filter_citations('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/merged_publications_only_en_v2.parquet')
+	filtered_df = filter_citations('.../merged_publications_only_en_v2.parquet')
 	filtered_df.to_parquet(
-    '/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/merged_publications_only_en_citations_v2.parquet')
+    '.../merged_publications_only_en_citations_v2.parquet')
 	print(f"Number of merged publications after removing those with less than 10 citations: {len(filtered_df)}.")
 
 if __name__ == "__main__":
