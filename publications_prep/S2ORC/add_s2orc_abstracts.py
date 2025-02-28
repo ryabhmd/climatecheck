@@ -25,16 +25,16 @@ def iterate_json_files(directory, pub_id):
 
 def main():
 
-    directory = '/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/S2ORC'
+    directory = '.../S2ORC'
 
-    s2orc_publications = pd.read_pickle('/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/s2orc_publications_deduplicated.pkl')
+    s2orc_publications = pd.read_pickle('.../s2orc_publications_deduplicated.pkl')
     s2orc_publications['abstract'] = None
     
     for index, row in tqdm(s2orc_publications.iterrows(), total=s2orc_publications.shape[0]):
         pub_id = row['id']
         abstract = iterate_json_files(directory, pub_id)
         s2orc_publications.at[index, 'abstract'] = abstract
-        s2orc_publications.to_pickle(f'/netscratch/abu/Shared-Tasks/ClimateCheck/data/publications/s2orc_publications_deduplicated_with_abstracts.pkl')
+        s2orc_publications.to_pickle(f'.../s2orc_publications_deduplicated_with_abstracts.pkl')
 
 
 if __name__ == "__main__":
