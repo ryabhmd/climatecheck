@@ -4,11 +4,10 @@ import argparse
 from claims_prep.german_claims.klimawandel_reddit_data import translate_keywords_to_german
 
 """
-Script to go over both enlish claims and german claims and extract a list of atomic claims 
+Script to go over claims and extract a list of atomic claims 
 using Gemini API. Atomic claims are extracted only from original claims. 
 The following arguments are expected:
 english_claims_path: path for final English claims data (see final_en_claims.py)
-german_claims_path: path for final German claims data (see final_de_claims.py)
 google_api_key: API key to use Gemini. 
 """
 
@@ -26,13 +25,11 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--english_claims_path", type=str, help="Path for English claims dataset")
-    parser.add_argument("--german_claims_path", type=str, help="Path for German claims dataset")
     parser.add_argument("--google_api_key", type=str, help="Google API to use Gemini")
 
     args = parser.parse_args()
 
     english_claims = pd.read_pickle(args.english_claims_path)
-    german_claims = pd.read_pickle(args.german_claims_path)
 
     GOOGLE_API_KEY = args.google_api_key
 
@@ -40,7 +37,7 @@ def main():
 
     model = genai.GenerativeModel('gemini-1.5-flash')
 
-    data = [english_claims, german_claims]
+    data = [english_claims]
 
     for item in data:
         atomic_claims = []
@@ -64,7 +61,6 @@ def main():
         item['atomic_claims'] = atomic_claims
 
     data[0].to_pickle('final_english_claims_atomic.pkl')
-    data[1].to_pickle('final_german_claims_atomic.pkl')
 
     # Create new files where each atomic claim has its own row
     atomic_claims_data = []
@@ -112,21 +108,10 @@ def main():
 
         atomic_claims_data.append(atomic_claims_df)
 
-    # Filter German claims further
-    german_keywords = translate_keywords_to_german()
-
-    for idx, row in atomic_claims_data[1].iterrows():
-        claim = row['claim']
-        if row['source'] == 'Klimawandel-Subreddit':
-            if not any(keyword.lower() in claim.lower() for keyword in keywords):
-                atomic_claims_data[1].drop(idx, inplace=True)
-
     # Drop duplicates
     atomic_claims_data[0] = atomic_claims_data[0].drop_duplicates(subset=['claim'])
-    atomic_claims_data[1] = atomic_claims_data[1].drop_duplicates(subset=['claim'])
     
     atomic_claims_data[0].to_pickle('climatecheck_english_claims.pkl')
-    atomic_claims_data[1].to_pickle('climatecheck_german_claims.pkl')
 
 if __name__ == "__main__":
     main()
