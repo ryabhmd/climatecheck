@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 
 # Configure pyalex for polite pool
-pyalex.config.email = "nikolas.rauscher@dfki.de"
+pyalex.config.email = ""
 config.max_retries = 3
 config.retry_backoff_factor = 0.1
 config.retry_http_codes = [429, 500, 503]
