@@ -14,33 +14,11 @@ nltk.download('punkt')
 nltk.download('punkt_tab')
 
 def preprocess(text):
-    # Tokenize and remove punctuation; add more preprocessing? (stop word removal, lemmatization, etc.?)
+    # Tokenize and remove punctuation
     text = text.lower()  # Lowercase the text
     tokens = word_tokenize(text)  # Tokenize
     tokens = [word for word in tokens if word not in string.punctuation]  # Remove punctuation
     return tokens
-
-def translate_claims_german_to_english(claims, tokenizer, model):
-    """
-    Function to translate a list of German claims to English
-    """
-    # Load the MBart model and tokenizer for translation
-    model_name = "facebook/mbart-large-50-many-to-many-mmt"
-    model = MBartForConditionalGeneration.from_pretrained(model_name)
-    tokenizer = MBart50TokenizerFast.from_pretrained(model_name)
-    tokenizer.src_lang = "de_DE"
-    target_lang = "en_XX"
-
-    translated_claims = []
-    for claim in tqdm(claims, desc='Translating Claims'):
-        # Tokenize the German text
-        inputs = tokenizer(claim, return_tensors="pt", max_length=512, truncation=True)
-        # Generate translation
-        translated_tokens = model.generate(**inputs, forced_bos_token_id=tokenizer.lang_code_to_id[target_lang])
-        # Decode the translated text
-        translated_text = tokenizer.decode(translated_tokens[0], skip_special_tokens=True)
-        translated_claims.append(translated_text)
-    return translated_claims
 
 def main():
 
@@ -81,9 +59,6 @@ def main():
     # Initialize BM25 once with the entire preprocessed corpus
     bm25 = BM25Okapi(tokenized_corpus)
 
-    if lang == 'de':
-        queries = translate_claims_german_to_english(queries)
-    
     # Prepare to store results
     top_abstracts = []
     
