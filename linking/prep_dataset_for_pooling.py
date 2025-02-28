@@ -51,7 +51,7 @@ def prepare_data(input_path, output_path):
 
 if __name__ == "__main__":
     
-    input_path = "/netscratch/abu/Shared-Tasks/ClimateCheck/data/claims/final_english_claims_reranked_msmarco.pkl"  
-    output_path = "/netscratch/abu/Shared-Tasks/ClimateCheck/data/claims/final_english_claims_expanded_masmarco_top10-20.hf"  
+    input_path = "../final_english_claims_reranked_msmarco.pkl"  
+    output_path = "../final_english_claims_expanded_masmarco_top10-20.hf"  
 
     prepare_data(input_path, output_path)
