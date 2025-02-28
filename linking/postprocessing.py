@@ -92,7 +92,7 @@ def create_annotation_data(concatenated_dataframe):
 				total_votes = row['total_votes']
 				item['linked_abstracts'].append({'abstract': abstract, 'abstract_original_index': abs_original_idx, 'msmarco_rank': msmarco_rank, 'total_votes': total_votes})
 
-	annotation_data = correct_ranks(annotation_data, "/netscratch/abu/Shared-Tasks/ClimateCheck/data/claims/final_english_claims_reranked_msmarco.pkl")
+	annotation_data = correct_ranks(annotation_data, "../final_english_claims_reranked_msmarco.pkl")
 
 	return annotation_data 
 
