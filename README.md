@@ -44,3 +44,15 @@ Given a claim in English extracted from a social media platform about climate ch
 2. **Subtask II:** For each of those, predict whether the publication supports, refutes, or does not have enough information about the claim.\
 The predictions for each claim should be a list of related articles and their labels. 
 
+# Citations
+
+```bibtex
+@inproceedings{climatecheck-dataset,
+    title = "The ClimateCheck Dataset: Mapping Social Media Claims About Climate Change to Corresponding Scholarly Articles",
+    author = "Abu Ahmad, Raia and Usmanova, Aida and Rehm, Georg",
+    booktitle = "Proceedings of the 5th Workshop on Scholarly Document Processing (SDP)",
+    year = "2025",
+    address = "Vienna, Austria",
+    comment = "Accepted for publication" 
+}
+```
