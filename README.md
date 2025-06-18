@@ -48,11 +48,20 @@ The predictions for each claim should be a list of related articles and their la
 
 ```bibtex
 @inproceedings{climatecheck-dataset,
-    title = "The ClimateCheck Dataset: Mapping Social Media Claims About Climate Change to Corresponding Scholarly Articles",
+    title = "The {ClimateCheck} Dataset: Mapping Social Media Claims About Climate Change to Corresponding Scholarly Articles",
     author = "Abu Ahmad, Raia and Usmanova, Aida and Rehm, Georg",
     booktitle = "Proceedings of the 5th Workshop on Scholarly Document Processing (SDP)",
     year = "2025",
     address = "Vienna, Austria",
-    comment = "Accepted for publication" 
+}
+```
+
+```bibtex
+@inproceedings{climatecheck-shared-task,
+    title = "The {ClimateCheck} Shared Task: Scientific Fact-Checking of Social Media Claims about Climate Change",
+    author = "Abu Ahmad, Raia and Usmanova, Aida and Rehm, Georg",
+    booktitle = "Proceedings of the 5th Workshop on Scholarly Document Processing (SDP)",
+    year = "2025",
+    address = "Vienna, Austria",
 }
 ```
