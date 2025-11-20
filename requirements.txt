@@ -13,3 +13,9 @@ numpy
 pyalex
 tqdm
 pathlib
+rank_bm25
+langchain
+langchain_community
+langchain-openai
+scikit-learn
+langchain-ollama
