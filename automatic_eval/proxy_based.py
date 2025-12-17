@@ -1,20 +1,24 @@
-from typing import List, Dict, Any
+from typing import Dict, Any
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 
 class Ev2RProxyScorer:
     """
-    Proxy-based Ev2R scorer as defined in:
+    Evidence-relative proxy-based Ev2R scorer adapted for ClimateCheck.
 
-    Akhtar et al. (2025), "Ev2R: Evaluating Evidence Retrieval in Automated Fact-Checking".
+    This scorer computes:
+        S_proxy(r) = softmax(z(c, r))_{y_g}
 
-    This scorer evaluates retrieved evidence by measuring how strongly
-    a trained verdict model predicts the reference (gold) label for a claim
-    conditioned on the retrieved evidence.
+    where:
+    - r is a retrieved abstract
+    - c is the claim
+    - y_g is the label of the gold abstract that r aligns with best
+      (determined externally via the reference-based component)
 
-    The score corresponds to:
-        S_proxy = p_theta(y* | claim, retrieved_evidence)
+    IMPORTANT:
+    - This class does not select the gold label (it's based on the reference_based component).
+    - It assumes the correct label for r is provided by the orchestrator.
     """
 
     def __init__(
@@ -27,15 +31,15 @@ class Ev2RProxyScorer:
         Parameters
         ----------
         model_name_or_path : str
-            HuggingFace model name or local path for a fine-tuned DeBERTa
-            sequence classification model.
+            HuggingFace model name or local path for a fine-tuned
+            DeBERTa sequence classification model.
 
         label2id : Dict[str, int]
             Mapping from label strings (e.g. "SUPPORTS", "REFUTES", "NEI")
-            to model class indices.
+            to model output indices.
 
         device : str, optional
-            Torch device ("cuda", "cpu"). If None, auto-detected.
+            Torch device ("cuda" or "cpu"). Auto-detected if None.
         """
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
         self.model = AutoModelForSequenceClassification.from_pretrained(
@@ -54,77 +58,34 @@ class Ev2RProxyScorer:
     def score(
         self,
         claim: str,
-        retrieved_abstracts: List[str],
+        retrieved_abstract: str,
         gold_label: str,
-        aggregation: str = "max",
-    ) -> Dict[str, Any]:
+    ) -> float:
         """
-        Computes the proxy-based Ev2R score for a set of retrieved abstracts.
+        Computes the proxy score for a single retrieved abstract.
 
         Parameters
         ----------
         claim : str
             The claim being evaluated.
 
-        retrieved_abstracts : List[str]
-            Retrieved evidence abstracts.
+        retrieved_abstract : str
+            A single retrieved abstract.
 
         gold_label : str
-            Gold verdict label associated with the best-aligned gold abstract.
-
-        aggregation : str, default="max"
-            How to aggregate scores over multiple abstracts.
-            Supported values:
-                - "max"  : max probability
-                - "mean" : mean probability
-
-        Returns
-        -------
-        Dict[str, Any]
-            {
-              "S_proxy": float,
-              "per_abstract_scores": List[float]
-            }
-        """
-        gold_label_id = self.label2id[gold_label]
-
-        per_abstract_scores = []
-
-        for abstract in retrieved_abstracts:
-            prob = self._score_single(claim, abstract, gold_label_id)
-            per_abstract_scores.append(prob)
-
-        if not per_abstract_scores:
-            s_proxy = 0.0
-        elif aggregation == "max":
-            s_proxy = max(per_abstract_scores)
-        elif aggregation == "mean":
-            s_proxy = sum(per_abstract_scores) / len(per_abstract_scores)
-        else:
-            raise ValueError(f"Unknown aggregation method: {aggregation}")
-
-        return {
-            "S_proxy": s_proxy,
-            "per_abstract_scores": per_abstract_scores,
-        }
-
-    def _score_single(
-        self,
-        claim: str,
-        abstract: str,
-        gold_label_id: int,
-    ) -> float:
-        """
-        Computes p_theta(y* | claim, abstract) for a single abstract.
+            Label of the gold abstract that this retrieved abstract
+            aligns with best.
 
         Returns
         -------
         float
-            Probability assigned to the gold label.
+            S_proxy score in [0, 1].
         """
+        gold_label_id = self.label2id[gold_label]
+
         inputs = self.tokenizer(
             claim,
-            abstract,
+            retrieved_abstract,
             return_tensors="pt",
             truncation=True,
             padding=True,
