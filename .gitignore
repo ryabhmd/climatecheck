@@ -5,7 +5,6 @@
 node_modules
 
 # Ignore all text, civ, and pt files
-*.txt
 *.csv
 *.pt
 
