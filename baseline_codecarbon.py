@@ -261,7 +261,7 @@ def classification(retrieval_df, model_name="01-ai/Yi-1.5-9B-Chat-16K"):
 	return class_df
             
 
-@track_emissions(project_name="ClimateCheck-Test", save_to_api=True)
+@track_emissions(project_name="ClimateCheck2026", save_to_api=True)
 def main():
 
 	retrieval_results = retrieval()
