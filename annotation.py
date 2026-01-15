@@ -7,16 +7,20 @@ import datetime
 import numpy as np
 import pandas as pd
 import torch
+from torch.nn import DataParallel
 from tqdm import tqdm
 import transformers
 from datasets import load_dataset
 from openai import OpenAI
 from vllm import LLM, SamplingParams
-from transformers import PreTrainedTokenizer, AutoTokenizer
+from transformers import PreTrainedTokenizer, AutoTokenizer, AutoModelForCausalLM
 from typing import List, Dict, Optional, Tuple
 
+
 from huggingface_hub import login
-login(token=os.environ('HF_TOKEN')) # vllm HF token
+
+from dotenv import load_dotenv
+load_dotenv()
 
 
 VALID_LABELS = ["SUPPORTS", "REFUTES", "NOT_ENOUGH_INFO"]
@@ -28,7 +32,7 @@ model_names = [
     "berkeley-nest/Starling-LM-7B-alpha",
     # "allenai/OLMo-7B-0724-Instruct-hf",
     # "gemini-1.5-flash-latest",
-    "Qwen/Qwen2.5-72B-Instruct",
+    "Qwen/Qwen2.5-VL-72B-Instruct",
     # "zai-org/GLM-4.6"
 ]
 prompt_instructions = "You are an expert scientific annotator specialized in climate science. Your task is to determine whether a scientific abstract supports, refutes, or provides insufficient information about a given claim.\n"
@@ -71,22 +75,35 @@ def parse_response(response: str):
         return label
 
 class HFModel:
-    def __init__(self, engine, new_tokens) -> None:
+    def __init__(self, engine, batch_size=8, new_tokens=1000) -> None:
         self.model_id = engine
+        # login(token=os.environ.get('HF_TOKEN')) 
 
         print(f"Loading model from {self.model_id} with HF")
-        self.model = transformers.pipeline(
-            "text-generation",
-            model=self.model_id,
-            torch_dtype=torch.bfloat16,
-            device_map="auto",
-            trust_remote_code=True if "OLMo" in self.model_id else False,
-        )
-        if not self.model.tokenizer.pad_token_id:
-            self.model.tokenizer.pad_token_id = (
-                self.model.tokenizer.eos_token_id
+        # self.model = transformers.pipeline(
+        #     "text-generation",
+        #     model=self.model_id,
+        #     torch_dtype=torch.bfloat16,
+        #     device_map="auto",
+        #     trust_remote_code=True if "OLMo" in self.model_id else False,
+        # )
+        
+        # self.n_tokens = new_tokens
+        self.batch_size = batch_size
+        
+        self.model = AutoModelForCausalLM.from_pretrained(self.model_id, torch_dtype=torch.bfloat16, device_map="auto")
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_id)
+        if not self.tokenizer.pad_token:
+            self.tokenizer.pad_token = (
+                self.tokenizer.eos_token
             )
-        self.n_tokens = new_tokens
+
+    def truncate_abstract(self, abstract: str, max_tokens: int = 3000) -> str:
+        tokens = self.tokenizer.encode(abstract)
+        if len(tokens) > max_tokens:
+            truncated_tokens = tokens[:max_tokens]
+            return self.tokenizer.decode(truncated_tokens, skip_special_tokens=True) + "..."
+        return abstract
 
     def process(self, example):
         user_message = {"role": "user", "content": example}
@@ -113,10 +130,89 @@ class HFModel:
             for response in responses:
                 results.append(response[0]["generated_text"])
         return results
+    
+    def process_batch(self, data):
+        results = []
+        for i in tqdm(range(0, len(data), self.batch_size), desc="Processing batches"):
+            batch = data[i:i + self.batch_size]
+            
+            batch_messages = [
+                [{"role": "user", 
+                "content": prompt_instructions + prompt_content.format(
+                    claim=data['claim'], 
+                    abstract=data['abstract']
+                )}]
+                for data in batch
+            ]
+            
+            inputs = self.tokenizer.apply_chat_template(
+                batch_messages,
+                add_generation_prompt=True,
+                tokenize=True,
+                return_dict=True,
+                return_tensors="pt",
+                padding=True,
+            ).to('cuda')
+            
+            with torch.no_grad():
+                responses = self.model.generate(**inputs, max_new_tokens=40)
+            
+            for j, data in enumerate(batch):
+                response = self.tokenizer.decode(
+                    responses[j][inputs["input_ids"].shape[-1]:],
+                    skip_special_tokens=True
+                )
+                label = parse_response(response)
+                
+                result = {
+                    'pair_id_inception': data['pair_id_inception'],
+                    'claim_id': data['claimID_original'],
+                    'claim': data['claim'],
+                    'abstract_id': data['abstract_original_index'],
+                    'abstract': data['abstract'],
+                    'annotation': data['annotation'],
+                    'predicted_label': label,
+                    'raw_response': response
+                }
+                results.append(result)
+        return results
+    
+    def annotate_dataset(self, data_rows: List[dict]) -> List[dict]:
+        all_results = []
+        
+        for data in tqdm(data_rows, desc="Processing batches"):
+            messages = [
+                {"role": "user", 
+                "content": prompt_instructions+prompt_content.format(claim=data['claim'], abstract=data['abstract'])
+                }]
+                
+            inputs = self.tokenizer.apply_chat_template(
+                messages,
+                add_generation_prompt=True,
+                tokenize=True,
+                return_dict=True,
+                return_tensors="pt",
+            ).to(self.model.device)
 
+            responses = self.model.generate(**inputs, max_new_tokens=40)
+            response = self.tokenizer.decode(responses[0][inputs["input_ids"].shape[-1]:])
+            label = parse_response(response)
+
+            result = {
+                'pair_id_inception': data['pair_id_inception'],
+                'claim_id': data['claimID_original'],
+                'claim': data['claim'],
+                'abstract_id': data['abstract_original_index'],
+                'abstract': data['abstract'],
+                'annotation': data['annotation'],
+                'predicted_label': label,
+                'raw_response': response
+            }
+            all_results.append(result)
+        return all_results
 
 class VLLM:
-    def __init__(self, engine="meta-llama/Llama-3.1-70B-Instruct", batch_size=8, max_tokens=256):
+    def __init__(self, engine="meta-llama/Llama-3.1-8B-Instruct", batch_size=8, max_tokens=256):
         """
         Initializes an instance of the class and its related components.
 
@@ -206,7 +302,7 @@ class VLLM:
         return all_results
 
 
-if __name__ == "__main__":
+def main():
     # claims_test = load_dataset("rabuahmad/climatecheck", split='test')
     # claims_train = load_dataset("rabuahmad/climatecheck", split='train')
     # claims_df = pd.DataFrame(claims_train)
@@ -216,6 +312,7 @@ if __name__ == "__main__":
         claims_df = pickle.load(file)
 
     batch_size = 8
+    load_type = "hf" # api, vllm
     model = model_names[2]
     model_name = model.split("/")[1]
     output_path = f"outputs/{model_name}.json"
@@ -227,13 +324,13 @@ if __name__ == "__main__":
 
     data_rows = claims_df.to_dict('records')
 
-    if "70B" in model or "72B" in model:
+    if load_type == "api":
         results = []
         client = OpenAI(
             api_key = os.environ['CHAT_AI_KEY'],
             base_url = os.environ['BASE_URL']
         )
-        for data in data_rows:
+        for data in tqdm(data_rows):
             result = {
                     'pair_id_inception': data['pair_id_inception'],
                     'claim_id': data['claimID_original'],
@@ -249,9 +346,9 @@ if __name__ == "__main__":
                                 claim=data['claim'], 
                                 abstract=data['abstract']
                             )}],
-                    model= model
+                    model= "qwen2.5-vl-72b-instruct"# "meta-llama-3.1-70b-instruct"
                 )
-                result['predicted_label'] = output.choices[0].message.content
+                result['predicted_label'] = parse_response(output.choices[0].message.content)
                 result['raw_response'] = output.choices[0].message.content
                 results.append(result)
             except:
@@ -259,11 +356,100 @@ if __name__ == "__main__":
                 result['raw_response'] = None
                 results.append(result)
                 continue
-    else:
+    elif load_type == "vllm":
         annotator = VLLM(engine=model, batch_size=batch_size)
         results = annotator.annotate_dataset(data_rows)
+    else:
+        annotator = HFModel(engine=model, batch_size=batch_size)
+        results = annotator.process_batch(data_rows)
 
     with open(output_path, 'w+') as f:
         json.dump(results, f, indent=2, ensure_ascii=False)
 
     print(f"Time now: {datetime.datetime.now()}. Time elapsed: {datetime.datetime.now() - start_time}")
+
+def transformer_run():
+    with open('data/climatecheck_data_annotated_2025-08-18.pkl', 'rb') as file:
+        claims_df = pickle.load(file)
+
+    model = model_names[2]
+    model_name = model.split("/")[1]
+    output_path = f"outputs/{model_name}.json"
+
+    print("===== INFO ======")
+    start_time = datetime.datetime.now()
+    print(f"Start time: {start_time}")
+    print("Model: ", model)
+
+    data_rows = claims_df.to_dict('records')
+    with open(f"outputs/{model_name}.json") as f:
+        written_data_1 = json.load(f)
+    data_rows = data_rows[len(written_data_1):]
+
+    tokenizer = AutoTokenizer.from_pretrained(model)
+    model = AutoModelForCausalLM.from_pretrained(model).to('cuda')
+    # model = DataParallel(model)
+    # model = model.cuda()
+
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    batch_size = 8 
+    results = []
+    for i in tqdm(range(0, len(data_rows), batch_size), desc="Processing batches"):
+        batch = data_rows[i:i + batch_size]
+        with open(f"outputs/{model_name}.json") as f:
+            written_data = json.load(f)
+
+        batch_messages = [
+            [{"role": "user", 
+            "content": prompt_instructions + prompt_content.format(
+                claim=data['claim'], 
+                abstract=data['abstract']
+            )}]
+            for data in batch
+        ]
+        
+        inputs = tokenizer.apply_chat_template(
+            batch_messages,
+            add_generation_prompt=True,
+            tokenize=True,
+            return_dict=True,
+            return_tensors="pt",
+            padding=True,
+        ).to('cuda')
+        
+        with torch.no_grad():
+            responses = model.generate(**inputs, max_new_tokens=40)
+        
+        for j, data in enumerate(batch):
+            response = tokenizer.decode(
+                responses[j][inputs["input_ids"].shape[-1]:],
+                skip_special_tokens=True
+            )
+            label = parse_response(response)
+            
+            result = {
+                'pair_id_inception': data['pair_id_inception'],
+                'claim_id': data['claimID_original'],
+                'claim': data['claim'],
+                'abstract_id': data['abstract_original_index'],
+                'abstract': data['abstract'],
+                'annotation': data['annotation'],
+                'predicted_label': label,
+                'raw_response': response
+            }
+            results.append(result)
+            written_data.append(result)
+            with open(output_path, 'w+') as f:
+                json.dump(written_data, f, indent=2, ensure_ascii=False)
+   
+    with open(output_path, 'w+') as f:
+        json.dump(results, f, indent=2, ensure_ascii=False)
+
+    print(f"Time now: {datetime.datetime.now()}. Time elapsed: {datetime.datetime.now() - start_time}")
+
+
+if __name__ == "__main__":
+    transformer_run()
+    # main()

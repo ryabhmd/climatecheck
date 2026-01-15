@@ -8,6 +8,7 @@ node_modules
 *.txt
 *.csv
 *.pt
+__pycache__/
 
 # Ignore files related to API keys
 .env
@@ -20,3 +21,4 @@ test.ipynb
 data/
 logs/
 outputs/
+run.sh

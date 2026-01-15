@@ -19,3 +19,4 @@ langchain_community
 langchain-openai
 scikit-learn
 langchain-ollama
+mistral_inference

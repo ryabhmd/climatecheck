@@ -19,7 +19,7 @@ model_names = [
     # "CohereForAI/c4ai-command-r-plus",
     "allenai/OLMo-7B-0724-Instruct-hf",
     # "gemini-1.5-flash-latest",
-    "Qwen/Qwen2.5-72B-Instruct",
+    "Qwen2.5-VL-72B-Instruct",
     "zai-org/GLM-4.6"
 ]
 
