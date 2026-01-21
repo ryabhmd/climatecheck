@@ -6,6 +6,7 @@ from typing import Dict, List, Any
 from reference_based import Ev2RReferenceBasedScorer
 from proxy_based import Ev2RProxyScorer
 from final_score import ClimateCheckEv2RScorer
+from claim_verification import ClaimVerificationScorer
 
 def read_csv(path: Path) -> List[Dict[str, str]]:
     """
@@ -30,6 +31,7 @@ def main(
     pred_csv: Path,
     reference_scorer: Ev2RReferenceBasedScorer,
     proxy_scorer: Ev2RProxyScorer,
+    verification_scorer: ClaimVerificationScorer,
     lambda_proxy: float = 0.5,
 ):
     """
@@ -42,7 +44,8 @@ def main(
     gold_by_claim = group_by_claim(gold_rows)
     pred_by_claim = group_by_claim(pred_rows)
 
-    all_claim_scores = []
+    all_claim_ev2r = []
+    all_claim_verification = []
 
     for claim_id, pred_claim_rows in pred_by_claim.items():
         if claim_id not in gold_by_claim:
@@ -59,14 +62,13 @@ def main(
             (r["claim_id"], r["abstract_id"]) for r in gold_claim_rows
         }
 
-        # Split predicted abstracts
-        unannotated_abstracts = [
-            r["abstract"]
-            for r in pred_claim_rows
+        # Keep full rows for verification (need predicted labels)
+        unannotated_rows = [
+            r for r in pred_claim_rows
             if (r["claim_id"], r["abstract_id"]) not in gold_pairs
         ]
 
-        if not unannotated_abstracts:
+        if not unannotated_rows:
             continue
 
         orchestrator = ClimateCheckEv2RScorer(
@@ -76,35 +78,61 @@ def main(
             lambda_proxy=lambda_proxy,
         )
 
-        score = orchestrator.score(
+        ev2r_result = orchestrator.score(
             claim=claim_text,
-            retrieved_abstracts=unannotated_abstracts,
+            retrieved_abstracts=[r["abstract"] for r in unannotated_rows],
             gold_abstracts=gold_abstracts,
         )
 
-        all_claim_scores.append(
-            {
-                "claim_id": claim_id,
-                "Ev2R": score["Ev2R"],
-                "num_unannotated": len(unannotated_abstracts),
-            }
-        )
+        all_claim_ev2r.append(ev2r_result["Ev2R"])
+
+        # Automatic claim verification scoring
+
+        per_claim_verification_scores = []
+
+        for row, per_abs in zip(unannotated_rows, ev2r_result["per_abstract"]):
+            predicted_label = row.get("label")
+            gold_label = per_abs["gold_label"]
+
+            if predicted_label is None:
+                continue
+
+            verification = verification_scorer.score(
+                claim=claim_text,
+                abstract=row["abstract"],
+                predicted_label=predicted_label,
+                gold_label=gold_label,
+            )
+
+            per_claim_verification_scores.append(verification["score"])
+
+        if per_claim_verification_scores:
+            claim_verif_score = sum(per_claim_verification_scores) / len(
+                per_claim_verification_scores
+            )
+            all_claim_verification.append(claim_verif_score)
 
         print(
             f"[Claim {claim_id}] "
-            f"Ev2R={score['Ev2R']:.4f} "
-            f"(unannotated={len(unannotated_abstracts)})"
+            f"Ev2R={ev2r_result['Ev2R']:.4f} | "
+            f"AutoVerif={claim_verif_score:.4f} "
+            f"(unannotated={len(unannotated_rows)})"
         )
 
-    if not all_claim_scores:
+    if not all_claim_ev2r:
         print("No unannotated claim–abstract pairs found.")
         return
+    
+    print("\n==============================")
+    print(f"Evaluated claims: {len(all_claim_ev2r)}")
+    print(f"Mean Ev2R score: {sum(all_claim_ev2r) / len(all_claim_ev2r):.4f}")
 
-    mean_ev2r = sum(x["Ev2R"] for x in all_claim_scores) / len(all_claim_scores)
-
-    print(f"Evaluated claims: {len(all_claim_scores)}")
-    print(f"Mean Ev2R score: {mean_ev2r:.4f}")
-
+    if all_claim_verification:
+        print(
+            f"Mean automatic verification score: "
+            f"{sum(all_claim_verification) / len(all_claim_verification):.4f}"
+        )
+    print("==============================\n")
 
 if __name__ == "__main__":
     # Paths
@@ -126,10 +154,22 @@ if __name__ == "__main__":
         },
     )
 
+    verification_scorer = ClaimVerificationScorer(
+        model_name_or_path="",  # add fine-tuned DeBERTa here
+        label2id={
+            "SUPPORTS": 0,
+            "REFUTES": 1,
+            "NEI": 2,
+        },
+        alpha=0.5,
+    )
+
+
     main(
         gold_csv=GOLD_CSV,
         pred_csv=PRED_CSV,
         reference_scorer=reference_scorer,
         proxy_scorer=proxy_scorer,
+        verification_scorer=verification_scorer,
         lambda_proxy=0.5,
     )

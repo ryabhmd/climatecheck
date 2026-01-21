@@ -5,7 +5,10 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 class Ev2RProxyScorer:
     """
-    Evidence-relative proxy-based Ev2R scorer adapted for ClimateCheck.
+    Evidence-relative proxy-based Ev2R scorer adapted for ClimateCheck. 
+
+    Original development of the scorer taken from:
+    Akhtar et al. (2025), "Ev2R: Evaluating Evidence Retrieval in Automated Fact-Checking".
 
     This scorer computes:
         S_proxy(r) = softmax(z(c, r))_{y_g}
