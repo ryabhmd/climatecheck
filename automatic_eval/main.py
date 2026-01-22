@@ -2,11 +2,15 @@ import csv
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Any
+import argparse
 
 from reference_based import Ev2RReferenceBasedScorer
 from proxy_based import Ev2RProxyScorer
 from final_score import ClimateCheckEv2RScorer
 from claim_verification import ClaimVerificationScorer
+
+import os
+import google.generativeai as genai
 
 def read_csv(path: Path) -> List[Dict[str, str]]:
     """
@@ -26,6 +30,16 @@ def group_by_claim(rows: List[Dict[str, str]]) -> Dict[str, List[Dict[str, str]]
         grouped[row["claim_id"]].append(row)
     return grouped
 
+def remove_only_nei_claims(grouped: Dict[str, List[Dict[str, str]]]) -> Dict[str, List[Dict[str, str]]]:
+    """
+    Removes claims that only have NEI annotations --> used only to filter out claims in gold data that can't be evaluated properly.
+    """
+    filtered_grouped = {}
+    for claim_id, rows in grouped.items():
+        if not all(row["annotation"] == "Not Enough Information" for row in rows):
+            filtered_grouped[claim_id] = rows
+    return filtered_grouped
+
 def main(
     gold_csv: Path,
     pred_csv: Path,
@@ -44,6 +58,8 @@ def main(
     gold_by_claim = group_by_claim(gold_rows)
     pred_by_claim = group_by_claim(pred_rows)
 
+    gold_by_claim = remove_only_nei_claims(gold_by_claim)
+
     all_claim_ev2r = []
     all_claim_verification = []
 
@@ -57,9 +73,9 @@ def main(
         claim_text = gold_claim_rows[0]["claim"]
 
         gold_abstracts = [r["abstract"] for r in gold_claim_rows]
-        gold_labels = [r["label"] for r in gold_claim_rows]
+        gold_labels = [r["annotation"] for r in gold_claim_rows]
         gold_pairs = {
-            (r["claim_id"], r["abstract_id"]) for r in gold_claim_rows
+            (r["claim_id"], r["abstract_original_index"]) for r in gold_claim_rows
         }
 
         # Keep full rows for verification (need predicted labels)
@@ -68,6 +84,7 @@ def main(
             if (r["claim_id"], r["abstract_id"]) not in gold_pairs
         ]
 
+        # Check if there are any rows to evaluate automatically
         if not unannotated_rows:
             continue
 
@@ -139,10 +156,17 @@ if __name__ == "__main__":
     GOLD_CSV = Path("gold.csv")
     PRED_CSV = Path("predictions.csv")
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--gemini_key", required=True, help="API key to access Gemini Pro when running the refenrence-based scorer.")
+    args = parser.parse_args()
+
+    genai.configure(api_key=args.gemini_key)
+    gemini_client = genai.GenerativeModel('gemini-pro')
+
     # Instantiate scorers (placeholders)
     reference_scorer = Ev2RReferenceBasedScorer(
-        gemini_client=...,                 # add Gemini client here
-        prompt_path=Path("prompt.txt"),
+        gemini_client= gemini_client,
+        prompt_path=Path("reference_based_prompt.txt"),
     )
 
     proxy_scorer = Ev2RProxyScorer(
