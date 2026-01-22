@@ -1,7 +1,9 @@
 from pathlib import Path
 from typing import List, Dict, Any
 import json
-
+from string import Template
+import re
+import time
 
 class Ev2RReferenceBasedScorer:
     """
@@ -23,23 +25,29 @@ class Ev2RReferenceBasedScorer:
     def __init__(
         self,
         gemini_client: Any,
-        prompt_path: Path,
+        prompt_path: Path = Path("reference_based_prompt.txt"),
+        gemini_model : str = "gemini-2.5-flash-lite",
     ):
         """
         Parameters
         ----------
         gemini_client : Any
-            Gemini-Pro client or wrapper with a method:
-                generate(prompt: str) -> str
+            Gemini client to be used for prompting.
 
         prompt_path : Path
             Path to a .txt file containing the prompt that instructs Gemini to:
             - extract atomic facts from predicted and reference evidence
             - check factual support in both directions
             - output a JSON object in the expected schema
+
+        gemini_model: String
+            Name of the Gemini model to be used for prompting. 
+
         """
         self.gemini_client = gemini_client
-        self.prompt_template = prompt_path.read_text()
+        self.gemini_model = gemini_model
+        prompt_text = prompt_path.read_text()
+        self.prompt_template = Template(prompt_text)
 
     def score(
         self,
@@ -98,6 +106,7 @@ class Ev2RReferenceBasedScorer:
                     "S_F1": s_f1,
                 }
             )
+            time.sleep(5) # to not overload the model
 
         best = max(per_gold_scores, key=lambda x: x["S_F1"])
 
@@ -108,6 +117,16 @@ class Ev2RReferenceBasedScorer:
             "best_gold_index": best["gold_index"],
             "per_gold_scores": per_gold_scores,
         }
+    
+    def _parse_gemini_json(self, text: str) -> dict:
+        """
+        Extract and parse a JSON object from a Gemini response.
+        """
+        # Remove ```json ... ``` fences if present
+        cleaned = re.sub(r"^```json\s*|\s*```$", "", text.strip(), flags=re.DOTALL)
+
+        return json.loads(cleaned)
+
 
     def _run_gemini(
         self,
@@ -129,20 +148,17 @@ class Ev2RReferenceBasedScorer:
         Dict[str, Any]
             Parsed Gemini JSON output.
         """
-        prompt = self.prompt_template.format(
+        prompt = self.prompt_template.substitute(
             claim=claim,
             predicted_evidence=retrieved_abstract,
             reference_evidence=gold_abstract,
         )
 
-        raw_output = self.gemini_client.generate(prompt)
+        raw_output = self.gemini_client.models.generate_content(
+            model="gemini-2.5-flash-lite", contents=prompt
+            )
 
-        try:
-            return json.loads(raw_output)
-        except json.JSONDecodeError as e:
-            raise ValueError(
-                "Gemini output is not valid JSON."
-            ) from e
+        return self._parse_gemini_json(raw_output)
 
     def _compute_precision(self, output: Dict[str, Any]) -> float:
         """

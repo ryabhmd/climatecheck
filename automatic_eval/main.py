@@ -3,6 +3,8 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Any
 import argparse
+from string import Template
+
 
 from reference_based import Ev2RReferenceBasedScorer
 from proxy_based import Ev2RProxyScorer
@@ -10,7 +12,7 @@ from final_score import ClimateCheckEv2RScorer
 from claim_verification import ClaimVerificationScorer
 
 import os
-import google.generativeai as genai
+from google import genai
 
 def read_csv(path: Path) -> List[Dict[str, str]]:
     """
@@ -39,6 +41,22 @@ def remove_only_nei_claims(grouped: Dict[str, List[Dict[str, str]]]) -> Dict[str
         if not all(row["annotation"] == "Not Enough Information" for row in rows):
             filtered_grouped[claim_id] = rows
     return filtered_grouped
+
+def get_abstract_text(unannotated_rows):
+    """
+    Adds abstract text for unannotated rows by loading the publications corpus and retrieving it based on abstract_id.
+    """
+    from datasets import load_dataset
+    corpus = load_dataset('rabuahmad/climatecheck_publications_corpus')
+    corpus_train = corpus['train']
+
+    for row in unannotated_rows:
+        abstract_id = row.get("abstract_id")
+        abstract = corpus_train[int(abstract_id)]['abstract']
+        row['abstract'] = abstract
+
+    return unannotated_rows
+
 
 def main(
     gold_csv: Path,
@@ -83,6 +101,8 @@ def main(
             r for r in pred_claim_rows
             if (r["claim_id"], r["abstract_id"]) not in gold_pairs
         ]
+
+        unannotated_rows = get_abstract_text(unannotated_rows)
 
         # Check if there are any rows to evaluate automatically
         if not unannotated_rows:
@@ -157,16 +177,17 @@ if __name__ == "__main__":
     PRED_CSV = Path("predictions.csv")
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--gemini_key", required=True, help="API key to access Gemini Pro when running the refenrence-based scorer.")
+    parser.add_argument("--gemini_key", required=True, help="API key to access Gemini when running the refenrence-based scorer.")
+    parser.add_argument("--gemini_model", required=True, help="Model name to use for prompting in the refenrence-based scorer.")
     args = parser.parse_args()
 
-    genai.configure(api_key=args.gemini_key)
-    gemini_client = genai.GenerativeModel('gemini-pro')
+    gemini_client = genai.Client(api_key=args.gemini_key)
 
     # Instantiate scorers (placeholders)
     reference_scorer = Ev2RReferenceBasedScorer(
         gemini_client= gemini_client,
         prompt_path=Path("reference_based_prompt.txt"),
+        gemini_model=args.gemini_model,
     )
 
     proxy_scorer = Ev2RProxyScorer(
