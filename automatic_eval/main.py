@@ -177,9 +177,13 @@ if __name__ == "__main__":
     PRED_CSV = Path("predictions.csv")
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--gemini_key", required=True, help="API key to access Gemini when running the refenrence-based scorer.")
-    parser.add_argument("--gemini_model", required=True, help="Model name to use for prompting in the refenrence-based scorer.")
-    args = parser.parse_args()
+    parser.add_argument("--gemini_key", required=True, 
+                        help="API key to access Gemini when running the refenrence-based scorer.")
+    parser.add_argument("--gemini_model", default="gemini-2.5-flash", 
+                        help="Model name to use for prompting in the refenrence-based scorer.")
+    parser.add_argument("--proxy_scorer_model", default="rausch/deberta-climatecheck-2463191-step26000", 
+                        help="Model name (BERT-based) to use for the proxy scorer and the claim verification socrer.")
+    args = parser.parse_args() 
 
     gemini_client = genai.Client(api_key=args.gemini_key)
 
@@ -191,20 +195,20 @@ if __name__ == "__main__":
     )
 
     proxy_scorer = Ev2RProxyScorer(
-        model_name_or_path="", # add fine-tuned DeBERTa here
+        model_name_or_path=args.proxy_scorer_model,
         label2id={
-            "SUPPORTS": 0,
-            "REFUTES": 1,
-            "NEI": 2,
+            "Supports": 0,
+            "Refutes": 1,
+            "Not Enough Information": 2,
         },
     )
 
     verification_scorer = ClaimVerificationScorer(
-        model_name_or_path="",  # add fine-tuned DeBERTa here
+        model_name_or_path=args.proxy_scorer_model,
         label2id={
-            "SUPPORTS": 0,
-            "REFUTES": 1,
-            "NEI": 2,
+            "Supports": 0,
+            "Refutes": 1,
+            "Not Enough Information": 2,
         },
         alpha=0.5,
     )

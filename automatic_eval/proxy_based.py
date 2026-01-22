@@ -26,9 +26,9 @@ class Ev2RProxyScorer:
 
     def __init__(
         self,
-        model_name_or_path: str,
         label2id: Dict[str, int],
         device: str | None = None,
+        model_name_or_path: str = "rausch/deberta-climatecheck-2463191-step26000",
     ):
         """
         Parameters
