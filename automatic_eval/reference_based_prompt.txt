@@ -1,0 +1,40 @@
+You will get as input a claim, a reference evidence and a predicted evidence. 
+Please verify the correctness of the predicted evidence by comparing it to the reference evidence, following these steps: 
+1. Break down the PREDICTED evidence in independent facts. Each fact should be a separate sentence. Facts should not be specific to the study, they must be generalized statements about climate science.
+2. Evaluate each fact individually: is the fact supported by the REFERENCE evidence? Do not use additional sources or background knowledge. 
+3. Next, break down the REFERENCE evidence in independent facts. Each fact should be a separate sentence. Facts should not be specific to the study, they must be generalized statements about climate science.
+4. Evaluate each fact individually: is the fact supported by the PREDICTED evidence? Do not use additional sources or background knowledge. 
+5. Finally summarise (1.) how many predicted facts are supported by the reference evidence, (2.) how many reference facts are supported by the predicted evidence.
+
+Generate the output in form of a json as shown in the examples below.
+
+----
+
+Examples:
+
+Claim: Antarctica is losing land ice at an accelerating rate, according to satellite measurements. This is a huge deal for sea levels and the planet's climate. #ClimateChange #Antarctica
+
+Reference evidence: The Antarctic Ice Sheet is losing mass at an accelerating rate, and playing a more important role in terms of global sea-level rise and climate change. The Amundsen Sea sector of West Antarctica has most likely been destabilized. Although previous numerical modeling studies examined the short-term future evolution of this region, here we take the next step and simulate the long-term evolution of the whole West Antarctic Ice Sheet. Our results show that if the Amundsen Sea sector is destabilized, then the entire marine ice sheet will discharge into the ocean, causing a global sea-level rise of about 3 m. We thus might be witnessing the beginning of a period of self-sustained ice discharge from West Antarctica that requires long-term global adaptation of coastal protection.
+
+Predicted evidence: Greenland ice core records provide clear evidence of rapid changes in climate in a variety of climate indicators. In this work, rapid climate change events in the Northern and Southern hemispheres are compared on the basis of an examination of changes in atmospheric circulation developed from two ice cores. High-resolution glaciochemical series, covering the period 10,000 to 16,000 years ago, from a central Greenland ice core and a new site in east Antarctica display similar variability. These findings suggest that rapid climate change events occur more frequently in Antarctica than previously demonstrated, especially contributing to its ice mass loss.
+
+Output: {{  
+    "facts in predicted evidence": "1. Greenland ice core records provide clear evidence of rapid changes in climate. 2. The glaciochemical records cover the period from 10,000 to 16,000 years ago. 3. The Greenland and Antarctic ice core records display similar variability. 4. Rapid climate change events occur more frequently in Antarctica than previously demonstrated. 5. Rapid climate change events contribute to Antarctica’s ice mass loss.",
+    "fact check predicted evidence": "1. Greenland ice core records provide clear evidence of rapid changes in climate. Not enough information. 2. The glaciochemical records cover the period from 10,000 to 16,000 years ago. Not enough information. 3. The Greenland and Antarctic ice core records display similar variability. Not enough information. 4. Rapid climate change events occur more frequently in Antarctica than previously demonstrated. The fact 'Rapid climate change events occur more frequently in Antarctica than previously demonstrated.' is supported by the reference evidence. 5. Rapid climate change events contribute to Antarctica’s ice mass loss. The fact 'Rapid climate change events contribute to Antarctica’s ice mass loss.' is supported by the reference evidence.",
+    "facts count predicted evidence": 5,
+    "support predicted evidence": 2,
+    "facts in reference evidence": "1. Antarctic Ice Sheet is losing mass at an accelerating rate. 2. Antarctic Ice Sheet losing mass plays an important role in global sea level rise. 3. Antarctic Ice Sheet losing mass plays an important role in climate change. 4. If the Amundsen Sea sector is destabilized, then the entire marine ice sheet will discharge into the ocean. 5. Marine ice sheet discharge into the ocean will cause a global sea-level rise of about 3m.",
+    "fact check reference evidence": "1. Antarctic Ice Sheet is losing mass at an accelerating rate. Not enough information. 2. Antarctic Ice Sheet losing mass plays an important role in global sea level rise. Not enough information. 3. Antarctic Ice Sheet losing mass plays an important role in climate change. The fact 'Antarctic Ice Sheet losing mass plays an important role in climate change.' is supported by the predicted evidence. 4. If the Amundsen Sea sector is destabilized, then the entire marine ice sheet will discharge into the ocean. Not enough information. 5. Marine ice sheet discharge into the ocean will cause a global sea-level rise of about 3m. Not enough information.",
+    "facts count reference evidence": 5,
+    "support reference evidence": 1
+}}
+
+----
+
+Input:
+
+Claim: $claim
+
+Reference evidence: $reference_evidence
+
+Predicted evidence: $predicted_evidence
