@@ -92,7 +92,7 @@ class ClimateCheckEv2RScorer:
                 ref = cached["S_ref"]
                 best_gold_idx = cached["best_gold_idx"]
                 gold_label = cached["gold_label"]
-                s_proxy = cached["S_proxy"]
+                s_proxy = cached["s_proxy"]
                 s_ev2r = cached["s_ev2r"]
 
             else:

@@ -44,7 +44,7 @@ class Ev2RCache:
                 "best_gold_idx": row[1],
                 "gold_label": row[2],
                 "s_proxy": row[3],
-                "s_ev2e": row[4],
+                "s_ev2r": row[4],
             }
         return None
 
