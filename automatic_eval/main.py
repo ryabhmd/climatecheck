@@ -11,6 +11,7 @@ from reference_based import Ev2RReferenceBasedScorer
 from proxy_based import Ev2RProxyScorer
 from final_score import ClimateCheckEv2RScorer
 from claim_verification import ClaimVerificationScorer
+from cache import Ev2RCache, make_pair_key
 
 import os
 from google import genai
@@ -62,6 +63,7 @@ def get_abstract_text(unannotated_rows):
 def main(
     gold_csv: Path,
     pred_csv: Path,
+    submission_name: str,
     reference_scorer: Ev2RReferenceBasedScorer,
     proxy_scorer: Ev2RProxyScorer,
     verification_scorer: ClaimVerificationScorer,
@@ -81,7 +83,17 @@ def main(
 
     gold_by_claim = remove_only_nei_claims(gold_by_claim)
 
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # create submission results dir
+    submission_dir = output_dir / f"submission_{submission_name}"
+    submission_dir.mkdir(parents=True, exist_ok=True)
+
+    # prep for saving results incrementally
+    claim_file = submission_dir / "claim_scores.csv"
+    abstract_file = submission_dir / "abstract_scores.csv"
+    summary_file = submission_dir / "summary.csv"
+
+    # Initialize cache
+    cache = Ev2RCache("results/cache/ev2r_cache.db")
 
     all_claim_ev2r = []
     all_claim_verification = []
@@ -117,6 +129,7 @@ def main(
             continue
 
         orchestrator = ClimateCheckEv2RScorer(
+            cache=cache,
             reference_scorer=reference_scorer,
             proxy_scorer=proxy_scorer,
             gold_labels=gold_labels,
@@ -156,7 +169,7 @@ def main(
                 per_claim_verification_scores
             )
             all_claim_verification.append(claim_verif_score)
-
+        
         print(
             f"[Claim {claim_id}] "
             f"Ev2R={ev2r_result['Ev2R']:.4f} | "
@@ -205,14 +218,14 @@ def main(
     print("==============================\n")
 
     # Save per-claim results
-    with open(output_dir / "claim_level_results.csv", "w", newline="") as f:
+    with open(claim_file, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=claim_results[0].keys())
         writer.writeheader()
         writer.writerows(claim_results)
 
     # Save per-abstract results
     if abstract_results:
-        with open(output_dir / "abstract_level_results.csv", "w", newline="") as f:
+        with open(abstract_file, "w", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=abstract_results[0].keys())
             writer.writeheader()
             writer.writerows(abstract_results)
@@ -227,7 +240,7 @@ def main(
                 ),
             }
 
-    with open(output_dir / "summary.json", "w") as f:
+    with open(summary_file, "w") as f:
         json.dump(summary, f, indent=2)
 
 if __name__ == "__main__":
@@ -245,6 +258,8 @@ if __name__ == "__main__":
                         help="Model name (BERT-based) to use for the proxy scorer and the claim verification socrer.")
     parser.add_argument("--output_dir", required=True,
                         help="Output dir to save results.")
+    parser.add_argument("--submission_name", required=True,
+                        help="Name of submission team/user to save results to.")
 
     args = parser.parse_args() 
 
@@ -282,6 +297,7 @@ if __name__ == "__main__":
     main(
         gold_csv=GOLD_CSV,
         pred_csv=PRED_CSV,
+        submission_name=args.submission_name,
         reference_scorer=reference_scorer,
         proxy_scorer=proxy_scorer,
         verification_scorer=verification_scorer,

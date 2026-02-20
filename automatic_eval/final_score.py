@@ -1,7 +1,7 @@
 from typing import List, Dict, Any
 from reference_based import Ev2RReferenceBasedScorer
 from proxy_based import Ev2RProxyScorer
-
+from cache import Ev2RCache, make_pair_key
 
 class ClimateCheckEv2RScorer:
     """
@@ -19,6 +19,7 @@ class ClimateCheckEv2RScorer:
 
     def __init__(
         self,
+        cache,
         reference_scorer: Ev2RReferenceBasedScorer,
         proxy_scorer: Ev2RProxyScorer,
         gold_labels: List[str],
@@ -39,6 +40,7 @@ class ClimateCheckEv2RScorer:
         lambda_proxy : float, default=0.5
             Weight assigned to the proxy component.
         """
+        self.cache = cache,
         self.reference_scorer = reference_scorer
         self.proxy_scorer = proxy_scorer
         self.gold_labels = gold_labels
@@ -82,28 +84,52 @@ class ClimateCheckEv2RScorer:
         per_abstract_scores = []
 
         for r in retrieved_abstracts:
-            # 1. Reference-based scoring
-            ref = self.reference_scorer.score(
-                claim=claim,
-                retrieved_abstract=r,
-                gold_abstracts=gold_abstracts,
-            )
+            # Check if the pair is already cached
+            pair_key = make_pair_key(claim, r)
+            cached = self.cache.get(pair_key)
 
-            best_gold_idx = ref["best_gold_index"]
-            gold_label = self.gold_labels[best_gold_idx]
+            if cached:
+                ref = cached["S_ref"]
+                best_gold_idx = cached["best_gold_idx"]
+                gold_label = cached["gold_label"]
+                s_proxy = cached["S_proxy"]
+                s_ev2r = cached["s_ev2r"]
 
-            # 2. Proxy-based scoring (evidence-relative)
-            s_proxy = self.proxy_scorer.score(
-                claim=claim,
-                retrieved_abstract=r,
-                gold_label=gold_label,
-            )
+            else:
 
-            # 3. Combine scores
-            s_ev2r = (
-                (1 - self.lambda_proxy) * ref["S_F1"]
-                + self.lambda_proxy * s_proxy
-            )
+                # 1. Reference-based scoring
+                ref = self.reference_scorer.score(
+                    claim=claim,
+                    retrieved_abstract=r,
+                    gold_abstracts=gold_abstracts,
+                )
+
+                best_gold_idx = ref["best_gold_index"]
+                gold_label = self.gold_labels[best_gold_idx]
+
+                # 2. Proxy-based scoring (evidence-relative)
+                s_proxy = self.proxy_scorer.score(
+                    claim=claim,
+                    retrieved_abstract=r,
+                    gold_label=gold_label,
+                )
+
+                # 3. Combine scores
+                s_ev2r = (
+                    (1 - self.lambda_proxy) * ref["S_F1"]
+                    + self.lambda_proxy * s_proxy
+                )
+
+                self.cache.insert(
+                    pair_key,
+                    claim,
+                    r,
+                    ref["S_F1"],
+                    best_gold_idx
+                    gold_label,
+                    s_proxy,
+                    s_ev2r
+                    )
 
             per_abstract_scores.append(
                 {
