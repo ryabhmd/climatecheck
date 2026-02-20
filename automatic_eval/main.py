@@ -1,4 +1,5 @@
 import csv
+import json
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Any
@@ -65,6 +66,8 @@ def main(
     proxy_scorer: Ev2RProxyScorer,
     verification_scorer: ClaimVerificationScorer,
     lambda_proxy: float = 0.5,
+    output_dir: Path = Path("results"),
+
 ):
     """
     Computes Ev2R scores for unannotated claim–abstract pairs.
@@ -78,8 +81,13 @@ def main(
 
     gold_by_claim = remove_only_nei_claims(gold_by_claim)
 
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     all_claim_ev2r = []
     all_claim_verification = []
+
+    claim_results = []
+    abstract_results = []
 
     for claim_id, pred_claim_rows in pred_by_claim.items():
         if claim_id not in gold_by_claim:
@@ -160,30 +168,88 @@ def main(
         print("No unannotated claim–abstract pairs found.")
         return
     
-    print("\n==============================")
-    print(f"Evaluated claims: {len(all_claim_ev2r)}")
-    print(f"Mean Ev2R score: {sum(all_claim_ev2r) / len(all_claim_ev2r):.4f}")
-
-    if all_claim_verification:
-        print(
-            f"Mean automatic verification score: "
-            f"{sum(all_claim_verification) / len(all_claim_verification):.4f}"
+    claim_verif_score = None
+    if per_claim_verification_scores:
+        claim_verif_score = (
+                sum(per_claim_verification_scores)
+                / len(per_claim_verification_scores)
         )
+        all_claim_verification.append(claim_verif_score)
+
+    claim_results.append({
+        "claim_id": claim_id,
+        "Ev2R": ev2r_result["Ev2R"],
+        "AutoVerification": claim_verif_score,
+        "num_unannotated": len(unannotated_rows),
+        })
+
+    for row, per_abs in zip(unannotated_rows, ev2r_result["per_abstract"]):
+        abstract_results.append({
+            "claim_id": claim_id,
+            "abstract_id": row.get("abstract_id"),
+            "gold_label": per_abs.get("gold_label"),
+            "proxy_score": per_abs.get("proxy_score"),
+            "reference_score": per_abs.get("reference_score"),
+            "Ev2R_component": per_abs.get("Ev2R_component"),
+            "predicted_label": row.get("label"),
+            })
+
+
+    print("\n==============================")
+    print(
+            f"[Claim {claim_id}] "
+            f"Ev2R={ev2r_result['Ev2R']:.4f} | "
+            f"AutoVerif={claim_verif_score if claim_verif_score is not None else 'N/A'} "
+            f"(unannotated={len(unannotated_rows)})"
+            )
     print("==============================\n")
 
-if __name__ == "__main__":
-    # Paths
-    GOLD_CSV = Path("gold.csv")
-    PRED_CSV = Path("predictions.csv")
+    # Save per-claim results
+    with open(output_dir / "claim_level_results.csv", "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=claim_results[0].keys())
+        writer.writeheader()
+        writer.writerows(claim_results)
 
+    # Save per-abstract results
+    if abstract_results:
+        with open(output_dir / "abstract_level_results.csv", "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=abstract_results[0].keys())
+            writer.writeheader()
+            writer.writerows(abstract_results)
+
+    # Save summary
+    summary = {
+            "num_claims": len(all_claim_ev2r),
+            "mean_Ev2R": sum(all_claim_ev2r) / len(all_claim_ev2r),
+            "mean_auto_verification": (
+                sum(all_claim_verification) / len(all_claim_verification)
+                if all_claim_verification else None
+                ),
+            }
+
+    with open(output_dir / "summary.json", "w") as f:
+        json.dump(summary, f, indent=2)
+
+if __name__ == "__main__":
+    
     parser = argparse.ArgumentParser()
+    parser.add_argument("--gold_path", required=True,
+                        help="Path to gold data.")
+    parser.add_argument("--pred_path", required=True,
+                        help="Path to predictions data.")
     parser.add_argument("--gemini_key", required=True, 
                         help="API key to access Gemini when running the refenrence-based scorer.")
-    parser.add_argument("--gemini_model", default="gemini-2.5-flash", 
+    parser.add_argument("--gemini_model", default="gemini-2.5-pro", 
                         help="Model name to use for prompting in the refenrence-based scorer.")
     parser.add_argument("--proxy_scorer_model", default="rausch/deberta-climatecheck-2463191-step26000", 
                         help="Model name (BERT-based) to use for the proxy scorer and the claim verification socrer.")
+    parser.add_argument("--output_dir", required=True,
+                        help="Output dir to save results.")
+
     args = parser.parse_args() 
+
+    GOLD_CSV = Path(args.gold_path)
+    PRED_CSV = Path(args.pred_path)
 
     gemini_client = genai.Client(api_key=args.gemini_key)
 
@@ -213,7 +279,6 @@ if __name__ == "__main__":
         alpha=0.5,
     )
 
-
     main(
         gold_csv=GOLD_CSV,
         pred_csv=PRED_CSV,
@@ -221,4 +286,5 @@ if __name__ == "__main__":
         proxy_scorer=proxy_scorer,
         verification_scorer=verification_scorer,
         lambda_proxy=0.5,
+        output_dir = Path(args.output_dir),
     )

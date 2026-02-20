@@ -4,6 +4,8 @@ import json
 from string import Template
 import re
 import time
+import random
+from google.genai.errors import ServerError
 
 class Ev2RReferenceBasedScorer:
     """
@@ -154,11 +156,36 @@ class Ev2RReferenceBasedScorer:
             reference_evidence=gold_abstract,
         )
 
-        raw_output = self.gemini_client.models.generate_content(
-            model="gemini-2.5-flash-lite", contents=prompt
-            )
+        max_retries = 8
+        base_sleep = 2  # seconds
 
-        return self._parse_gemini_json(raw_output)
+        for attempt in range(max_retries):
+            try:
+                response = self.gemini_client.models.generate_content(
+                        model=self.gemini_model, contents=prompt
+                )
+                text = response.candidates[0].content.parts[0].text
+
+                return self._parse_gemini_json(text)
+
+            except ServerError as e:
+                if e.status_code == 503:
+                    sleep_time = base_sleep * (2 ** attempt) + random.uniform(0, 1)
+                    print(
+                    f"[Gemini 503] Attempt {attempt+1}/{max_retries}. "
+                    f"Retrying in {sleep_time:.1f}s..."
+                    )
+                    time.sleep(sleep_time)
+                else:
+                    # Non-retryable server error
+                    raise
+
+            except Exception as e:
+                # Catch parsing or unexpected issues
+                print(f"[Gemini ERROR] {e}")
+                raise
+
+        raise RuntimeError("Gemini failed after multiple retries (503 UNAVAILABLE).")
 
     def _compute_precision(self, output: Dict[str, Any]) -> float:
         """
