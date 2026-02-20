@@ -110,7 +110,6 @@ def main(
             continue
 
         gold_claim_rows = gold_by_claim[claim_id]
-
         claim_text = gold_claim_rows[0]["claim"]
 
         gold_abstracts = [r["abstract"] for r in gold_claim_rows]
@@ -147,7 +146,7 @@ def main(
 
         all_claim_ev2r.append(ev2r_result["Ev2R"])
 
-        # Automatic claim verification scoring
+        # Automatic claim verification scoring (per abstract loop)
 
         per_claim_verification_scores = []
 
@@ -167,6 +166,25 @@ def main(
 
             per_claim_verification_scores.append(verification["score"])
 
+            # save claim-abstract pair scores
+            abstract_results.append({
+                "claim_id": claim_id,
+                "abstract_id": row.get("abstract_id"),
+                "gold_label": gold_label,
+                "proxy_score": per_abs.get("proxy_score"),
+                "reference_score": per_abs.get("reference_score"),
+                "Ev2R_component": per_abs.get("Ev2R_component"),
+                "predicted_label": predicted_label,
+                "verification_score": verification["score"],
+            })
+
+            # write claim-abstract scores
+            if abstract_results:
+                with open(abstract_file, "w", newline="") as f:
+                    writer = csv.DictWriter(f, fieldnames=abstract_results[0].keys())
+                    writer.writeheader()
+                    writer.writerows(abstract_results)
+
         if per_claim_verification_scores:
             claim_verif_score = sum(per_claim_verification_scores) / len(
                 per_claim_verification_scores
@@ -182,56 +200,25 @@ def main(
 
         claim_results.append({
             "claim_id": claim_id,
-            "Ev2R": ev2r_results["Ev2R"],
+            "Ev2R": ev2r_result["Ev2R"],
             "AutoVerification": claim_verif_score,
             "num_unannotated": len(unannotated_rows),
             })
+        
+        tqdm.write(
+        f"[Claim {claim_id}] "
+        f"Ev2R={ev2r_result['Ev2R']:.4f} | "
+        f"AutoVerif={claim_verif_score if claim_verif_score is not None else 'N/A'} "
+        f"(unannotated={len(unannotated_rows)})"
+    )
 
-
-    
-    claim_verif_score = None
-    if per_claim_verification_scores:
-        claim_verif_score = (
-                sum(per_claim_verification_scores)
-                / len(per_claim_verification_scores)
-        )
-        all_claim_verification.append(claim_verif_score)
-
-    for row, per_abs in zip(unannotated_rows, ev2r_result["per_abstract"]):
-        abstract_results.append({
-            "claim_id": claim_id,
-            "abstract_id": row.get("abstract_id"),
-            "gold_label": per_abs.get("gold_label"),
-            "proxy_score": per_abs.get("proxy_score"),
-            "reference_score": per_abs.get("reference_score"),
-            "Ev2R_component": per_abs.get("Ev2R_component"),
-            "predicted_label": row.get("label"),
-            })
-
-
-    print("\n==============================")
-    print(
-            f"[Claim {claim_id}] "
-            f"Ev2R={ev2r_result['Ev2R']:.4f} | "
-            f"AutoVerif={claim_verif_score if claim_verif_score is not None else 'N/A'} "
-            f"(unannotated={len(unannotated_rows)})"
-            )
-    print("==============================\n")
-
-    # Save per-claim results
-    with open(claim_file, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=claim_results[0].keys())
-        writer.writeheader()
-        writer.writerows(claim_results)
-
-    # Save per-abstract results
-    if abstract_results:
-        with open(abstract_file, "w", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=abstract_results[0].keys())
+        # Save per-claim results
+        with open(claim_file, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=claim_results[0].keys())
             writer.writeheader()
-            writer.writerows(abstract_results)
+            writer.writerows(claim_results)
 
-    # Save summary
+    # Save summary for all claims (per full submission)
     summary = {
             "num_claims": len(all_claim_ev2r),
             "mean_Ev2R": sum(all_claim_ev2r) / len(all_claim_ev2r),
