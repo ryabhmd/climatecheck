@@ -5,8 +5,7 @@ from pathlib import Path
 from typing import Dict, List, Any
 import argparse
 from string import Template
-
-
+from tqdm import tqdm
 from reference_based import Ev2RReferenceBasedScorer
 from proxy_based import Ev2RProxyScorer
 from final_score import ClimateCheckEv2RScorer
@@ -101,7 +100,11 @@ def main(
     claim_results = []
     abstract_results = []
 
-    for claim_id, pred_claim_rows in pred_by_claim.items():
+    for claim_id, pred_claim_rows in tqdm(
+            pred_by_claim.items(),
+            total=len(pred_by_claim),
+            desc="Scoring claims",
+            ):
         if claim_id not in gold_by_claim:
             # No gold data → cannot evaluate
             continue
@@ -177,9 +180,14 @@ def main(
             f"(unannotated={len(unannotated_rows)})"
         )
 
-    if not all_claim_ev2r:
-        print("No unannotated claim–abstract pairs found.")
-        return
+        claim_results.append({
+            "claim_id": claim_id,
+            "Ev2R": ev2r_results["Ev2R"],
+            "AutoVerification": claim_verif_score,
+            "num_unannotated": len(unannotated_rows),
+            })
+
+
     
     claim_verif_score = None
     if per_claim_verification_scores:
@@ -188,13 +196,6 @@ def main(
                 / len(per_claim_verification_scores)
         )
         all_claim_verification.append(claim_verif_score)
-
-    claim_results.append({
-        "claim_id": claim_id,
-        "Ev2R": ev2r_result["Ev2R"],
-        "AutoVerification": claim_verif_score,
-        "num_unannotated": len(unannotated_rows),
-        })
 
     for row, per_abs in zip(unannotated_rows, ev2r_result["per_abstract"]):
         abstract_results.append({

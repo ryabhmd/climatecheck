@@ -40,7 +40,7 @@ class ClimateCheckEv2RScorer:
         lambda_proxy : float, default=0.5
             Weight assigned to the proxy component.
         """
-        self.cache = cache,
+        self.cache = cache
         self.reference_scorer = reference_scorer
         self.proxy_scorer = proxy_scorer
         self.gold_labels = gold_labels
@@ -125,7 +125,7 @@ class ClimateCheckEv2RScorer:
                     claim,
                     r,
                     ref["S_F1"],
-                    best_gold_idx
+                    best_gold_idx,
                     gold_label,
                     s_proxy,
                     s_ev2r

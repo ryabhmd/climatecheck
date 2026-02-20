@@ -33,16 +33,18 @@ class Ev2RCache:
     def get(self, pair_key: str) -> Optional[Dict[str, Any]]:
         cursor = self.conn.cursor()
         cursor.execute("""
-            SELECT reference_score, proxy_score, gold_label
+            SELECT S_ref, best_gold_idx, gold_label, s_proxy, s_ev2r
             FROM ev2r_cache WHERE pair_key=?
         """, (pair_key,))
         row = cursor.fetchone()
 
         if row:
             return {
-                "reference_score": row[0],
-                "proxy_score": row[1],
+                "S_ref": row[0],
+                "best_gold_idx": row[1],
                 "gold_label": row[2],
+                "s_proxy": row[3],
+                "s_ev2e": row[4],
             }
         return None
 
@@ -51,20 +53,24 @@ class Ev2RCache:
         pair_key: str,
         claim: str,
         abstract: str,
-        reference_score: float,
-        proxy_score: float,
+        S_ref: float,
+        best_gold_idx: int,
         gold_label: str,
+        s_proxy: float,
+        s_ev2r: float,
     ):
         cursor = self.conn.cursor()
         cursor.execute("""
             INSERT OR REPLACE INTO ev2r_cache
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             pair_key,
             claim,
             abstract,
-            reference_score,
-            proxy_score,
+            S_ref,
+            best_gold_idx,
             gold_label,
+            s_proxy,
+            s_ev2r
         ))
         self.conn.commit()  # immediate commit (crash-safe)

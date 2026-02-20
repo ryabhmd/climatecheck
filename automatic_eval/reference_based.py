@@ -169,7 +169,7 @@ class Ev2RReferenceBasedScorer:
                 return self._parse_gemini_json(text)
 
             except ServerError as e:
-                if e.status_code == 503:
+                if e.status == 503:
                     sleep_time = base_sleep * (2 ** attempt) + random.uniform(0, 1)
                     print(
                     f"[Gemini 503] Attempt {attempt+1}/{max_retries}. "
